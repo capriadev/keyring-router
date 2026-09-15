@@ -14,6 +14,7 @@ coverage/
 .env
 .env.*
 !.env.example
+backup.config.ps1
 
 # docker data volumes
 docker/data/
@@ -41,3 +42,5 @@ Thumbs.db
 # temp (cosas temporales del workspace)
 temp/
 _backups/
+
+backup.config.ps1
