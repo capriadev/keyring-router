@@ -1,0 +1,17 @@
+@import '../theme/tokens.css';
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-body);
+  background: var(--color-surface);
+  color: var(--color-content);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
