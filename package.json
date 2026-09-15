@@ -1,0 +1,37 @@
+{
+  "name": "keyring-router",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Self-hosted local gateway for AI inference providers with namespaced credentials and policy-controlled model exposure.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run start:dev --workspace=apps/backend",
+    "build": "npm run build --workspaces --if-present",
+    "build:frontend": "npm run build --workspace=apps/frontend",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "start:frontend": "npm run start --workspace=apps/frontend",
+    "start:backend": "npm run start:prod --workspace=apps/backend",
+    "tsc": "npm run tsc --workspaces --if-present",
+    "orm": "npm run orm:generate",
+    "orm:generate": "cd apps/backend && drizzle-kit generate",
+    "orm:migrate": "cd apps/backend && drizzle-kit migrate",
+    "orm:push": "cd apps/backend && drizzle-kit push",
+    "orm:studio": "cd apps/backend && drizzle-kit studio",
+    "back": "powershell -ExecutionPolicy Bypass -File ./backup.ps1"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
+  "allowScripts": {
+    "argon2@0.45.1": true
+  }
+}

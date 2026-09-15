@@ -1,5 +1,123 @@
 # Architecture - Keyring Router
 
+Single source of truth for how Keyring Router is built. Update on every trade-off. Mark replaced decisions `[SUPERSEDED]` instead of deleting them.
+
+## Identity
+
+- Name: **Keyring Router**.
+- Self-hosted, local-first gateway for AI inference APIs.
+- The local GUI runs in `apps/frontend`; the gateway runs independently in `apps/backend`.
+
+---
+
+## Stack (decided base)
+
+| Layer | Tech | Notes |
+|---|---|---|
+| Frontend (`apps/frontend`) | Next.js + TypeScript | Local administration UI. It talks to the backend only through `gateway/`. |
+| Backend (`apps/backend`) | NestJS + TypeScript + Fastify adapter | Runs as an independent local process and is exposed through the `kr` CLI. |
+| DB | SQLite | Default zero-setup local database. |
+| ORM | Drizzle ORM | Typed access to SQLite. All DB access stays in `dal/`. |
+| Validation | Zod | Config, API boundaries and provider responses. |
+| Config (user-owned) | JSON/YAML plus SQLite metadata | Provider aliases, filters and preferences are versionable; secrets never enter tracked config. |
+| Runtime | Node.js 24.20.0 via nvm | Pinned by `.nvmrc`. |
+| CLI | `kr` | `kr serve` starts the backend; service installation is separate. |
+| Windows startup | `node-windows` or NSSM | Rust is not required for the gateway or service registration. |
+
+### Backend layers (`apps/backend/src`) - strict responsibilities
+
+- `dal/` - the ONLY layer that talks to SQLite/Drizzle. No queries elsewhere.
+- `bll/` - ALL Keyring Router business logic: credentials, namespaces, catalog, policy and routing. No HTTP and no direct DB access.
+- `gateway/` - HTTP/WS API exposed to the frontend and local API clients. No business logic inside.
+- `services/` - focused internal cross-cutting services. These are not provider integrations.
+- `integrations/` - adapters for the external world, especially `providers/<provider>.client.ts`. The core never imports provider SDK details directly.
+- `config/` - typed boot and user configuration loading and validation.
+- `types/` - shared contracts used by more than one layer.
+
+### Provider adapter contract
+
+Adapters validate one credential, discover its catalog, normalize model capabilities, translate requests and responses, and normalize provider errors without leaking secrets. Each credential remains distinct even when two credentials belong to the same provider.
+
+### Frontend design system
+
+- Component architecture: **Atomic Lazy Design**, a reduced Atomic Design with exactly three layers: atoms, molecules and organisms.
+- The frontend does not access SQLite or backend internals directly. API calls live under `services/`.
+- `theme/tokens.css` is the single source of design tokens. Components do not hardcode theme values.
+- `theme/presets/` contains complete built-in or custom presets, including colors, typography, sounds, component variants and layout order.
+- Dark, light and custom themes are supported through tokens and presets.
+- Fonts and sounds are pluggable extras.
+- Spanish and English are the initial language targets.
+- Before adding a UI library, evaluate copying and adapting the exact needed fragment instead of importing an opaque, conflicting design system.
+
+### Rust boundary
+
+Rust is not part of the initial gateway. It may be introduced later only for a native Windows helper or a clearly justified OS-level sidecar. Provider routing, SQLite access, CLI and Windows service registration remain Node/TypeScript concerns unless a concrete limitation proves otherwise.
+
+---
+
+## Repository layout (planned)
+
+```
+repo root/
+├── AGENTS.md
+├── README.md
+├── package.json
+├── apps/
+│   ├── backend/
+│   │   ├── drizzle/             schema + migrations
+│   │   └── src/
+│   │       ├── bll/
+│   │       ├── config/
+│   │       ├── dal/
+│   │       ├── gateway/
+│   │       ├── integrations/
+│   │       ├── services/
+│   │       └── types/
+│   └── frontend/
+│       └── src/
+│           ├── app/
+│           ├── ui/               atoms, molecules, organisms
+│           ├── components/
+│           ├── hooks/
+│           ├── events/
+│           ├── theme/
+│           ├── services/
+│           ├── types/
+│           └── config/
+├── docs/
+├── .agents/
+└── .git/
+```
+
+This is the target structure. Do not scaffold empty directories without a spec that needs them.
+
+---
+
+## Security and observability
+
+- Bind the gateway to a safe local interface by default until remote exposure receives a separate security design.
+- Redact secrets from logs, errors, support bundles and tests.
+- Record routing decisions only with non-secret identifiers such as request ID, namespace, model, adapter and normalized outcome.
+- Treat provider responses as untrusted input and validate their shape.
+- Credential encryption and OS secret storage require a dedicated security spec before implementation.
+
+---
+
+## Open decisions
+
+- First provider adapter and OpenAI-compatible API surface.
+- Exact storage boundary between JSON/YAML configuration and SQLite metadata.
+- Credential encryption and Windows secret-storage strategy.
+- Routing rotation, fallback and quota behavior.
+
+Resolve each open decision in a spec before adding its dependency or public contract.
+
+---
+
+## [SUPERSEDED] Previous bootstrap draft
+
+The section below is retained as an implementation-history trace. The Keyring Router stack and boundaries above are authoritative.
+
 ## Current architecture
 
 Keyring Router is an open-source, self-hosted AI inference gateway. It runs on the user's machine, is not a hosted credential service, and exposes one local API across multiple providers and multiple credentials for the same provider.
