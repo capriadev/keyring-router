@@ -73,4 +73,4 @@ Fix: the message states that the auth kind is now storable and which kinds are e
 
 ## Status
 
-active
+completed on 2026-09-29

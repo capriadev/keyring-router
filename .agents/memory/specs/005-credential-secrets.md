@@ -61,4 +61,4 @@ Out of scope: passphrase unlock mode, the vault section, the physical USB key la
 
 ## Status
 
-pending
+completed on 2026-09-29

@@ -11,13 +11,14 @@ A self-hosted local gateway that a user installs on Windows, that starts on its 
 | # | Milestone | Spec | Status |
 |---|---|---|---|
 | M1 | First vertical slice: Ollama credential, catalog, policy, model listing | 001 | done |
-| M2 | Provider catalog: many providers behind hybrid adapters | 002 | in progress |
-| M3 | Credential secrets encrypted at rest, so `api_key` providers become usable | 005 | next |
-| M4 | Own API: OpenAI compatible facade with protocol translation | 003 | pending |
-| M5 | Routing: rotation, fallback, quota and lockout | 004 | pending |
+| M2 | Provider catalog: many providers behind hybrid adapters | 002 | done |
+| M3 | Credential secrets encrypted at rest, so `api_key` providers become usable | 005 | done |
+| M4 | Own API: OpenAI compatible facade with protocol translation | 003 | in progress |
+| M5 | Routing: rotation, fallback, quota and lockout | 004 | next |
 | M6 | `kr` CLI: serve, service install, credential and policy commands | 006 | pending |
 | M7 | Windows startup service | 007 | pending |
-| M8 | UI: minimalist, micro detailed, complete flow | 008 | pending |
+| M8 | Shared API contracts: one source for the wire shapes the UI and the API share | 010 | pending |
+| M9 | UI: minimalist, micro detailed, complete flow | 008 | pending |
 
 ## Critical path
 
