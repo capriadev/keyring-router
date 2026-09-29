@@ -14,4 +14,5 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 #6 kr CLI - run and manage the gateway from one command, as a thin client of the local API [spec: 006-cli.md] [status: pending]
 #7 Windows startup service - install, uninstall and status of the gateway as a real Windows service [spec: 007-windows-service.md] [status: pending]
 #8 Local UI - minimalist and micro detailed interface with three focused review passes [spec: 008-ui.md] [status: pending]
+#9 Fix the M2 and M3 audit findings - catalog read path, versioned e2e, secret boundary, identity and relay sweep [spec: 009-fix-audit-m2-m3.md] [status: active]
 #5 Encrypted credential secrets - store an api_key encrypted at rest with AES-256-GCM so the cloud providers become usable [spec: 005-credential-secrets.md] [status: pending]
