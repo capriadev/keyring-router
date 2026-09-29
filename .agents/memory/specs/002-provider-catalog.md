@@ -2,7 +2,7 @@
 
 Spec ID: 002
 Status: pending
-Branch: feature/002-provider-catalog
+Branch: feature/v1-gateway
 
 ## Objective
 

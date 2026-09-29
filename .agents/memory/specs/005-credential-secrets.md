@@ -2,7 +2,7 @@
 
 Spec ID: 005
 Status: pending
-Branch: feature/005-credential-secrets
+Branch: feature/v1-gateway
 Depends on: spec 002 for the catalog entries that declare `bearer` or `x-api-key` auth.
 
 ## Objective
