@@ -14,6 +14,21 @@ export interface ReadSseFramesInput {
 /** The sentinel an OpenAI shaped stream writes instead of a last frame. */
 const DONE = '[DONE]';
 
+/** A frame terminator is CRLF, LF or a lone CR, and an event ends where two of them meet. */
+const EVENT_BOUNDARY = /(?:\r\n|\r|\n){2}/;
+
+/** The separator between the lines of one event, with the same three terminators. */
+const LINE_BREAK = /\r\n|\r|\n/;
+
+/**
+ * The ceiling on the text waiting for a terminator. A provider that opens an event and never closes it has
+ * to fail as a broken response instead of growing this process until it dies: measured before the fix, 64 MB
+ * of unterminated data produced zero frames, 422 MB of heap and no failure until the body closed. The
+ * ceiling counts what is pending, never the stream, so an answer of any size still arrives as long as its
+ * frames keep closing.
+ */
+const MAX_PENDING_CHARS = 8 * 1024 * 1024;
+
 /**
  * The payload of one event: only `data:` lines carry one. A `:` line is a comment, every other field
  * (`event:`, `id:`, `retry:`) is metadata, and several data lines of one event are joined with a newline,
@@ -22,9 +37,7 @@ const DONE = '[DONE]';
 function eventPayload(block: string): string | null {
   const data: string[] = [];
 
-  for (const rawLine of block.split('\n')) {
-    const line = rawLine.replace(/\r$/, '');
-
+  for (const line of block.split(LINE_BREAK)) {
     if (line === '' || line.startsWith(':')) {
       continue;
     }
@@ -65,9 +78,16 @@ export async function* readSseFrames(input: ReadSseFramesInput): AsyncGenerator<
     buffer += decoder.decode(chunk, { stream: true });
 
     for (;;) {
-      const boundary = /\r?\n\r?\n/.exec(buffer);
+      const boundary = EVENT_BOUNDARY.exec(buffer);
 
       if (boundary === null) {
+        if (buffer.length > MAX_PENDING_CHARS) {
+          throw input.fail(
+            'invalid_response',
+            `${input.label} sent more than ${MAX_PENDING_CHARS} characters without closing an event for ${input.operation}`,
+          );
+        }
+
         break;
       }
 
@@ -76,7 +96,9 @@ export async function* readSseFrames(input: ReadSseFramesInput): AsyncGenerator<
 
       const payload = eventPayload(block);
 
-      if (payload === null) {
+      // A block that carries no data is not a frame: a comment, a keep-alive, or an empty `data:` line. The
+      // format allows all three, so none of them may end the stream.
+      if (payload === null || payload.trim() === '') {
         continue;
       }
 
@@ -91,7 +113,7 @@ export async function* readSseFrames(input: ReadSseFramesInput): AsyncGenerator<
   // A last event that arrived without its closing blank line still counts.
   const tail = eventPayload(buffer);
 
-  if (tail !== null && tail.trim() !== DONE) {
+  if (tail !== null && tail.trim() !== '' && tail.trim() !== DONE) {
     yield parseFrame(tail, input);
   }
 }

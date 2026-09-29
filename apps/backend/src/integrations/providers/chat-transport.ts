@@ -1,11 +1,11 @@
 import type { ProviderChatCall } from '../../types/chat-transport.js';
 import type { ProviderFormat } from '../../types/provider-catalog.js';
 import { ProviderFailure, type ProviderErrorKind } from '../../types/provider.js';
+import { withQuery } from '../catalog/auth-headers.js';
 import { DOCUMENTED_PATHS, chatEndpointFor } from './documented-paths.js';
 import {
   absoluteHttpUrl,
   buildRequestAuth,
-  describeRequestUrl,
   requestJson,
   requestStream,
   stripTrailingSlashes,
@@ -40,7 +40,6 @@ export interface ChatTransportOptions {
 
 interface PreparedCall {
   readonly url: string;
-  readonly displayUrl: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
 }
@@ -95,8 +94,10 @@ export class ProtocolChatTransport {
   }
 
   /**
-   * The endpoint, the headers and the serialized body of one call. The URL names no userinfo and no
-   * credential query, which is why the display URL and the called URL are built apart.
+   * The endpoint, the headers and the serialized body of one call. The URL carries the query the catalog
+   * declares and the one the credential belongs in, which is why the credential is resolved first: a
+   * `query` scheme places the secret there and nowhere else, so a transport that only read the headers would
+   * send the request without any credential at all.
    */
   private prepare(target: ProtocolRequestTarget, call: ProviderChatCall): PreparedCall {
     const base = stripTrailingSlashes(target.baseUrl);
@@ -105,12 +106,15 @@ export class ProtocolChatTransport {
       label: target.label,
       fail: this.failure(target),
     });
-    const url = withDeclaredQuery(this.urlFor(parsed, call), target.urlSuffix);
     const auth = buildRequestAuth({
       label: target.label,
       auth: target.auth,
       fail: this.failure(target),
     });
+    const url = withQuery(
+      withDeclaredQuery(this.urlFor(parsed, call), target.urlSuffix),
+      auth.query,
+    );
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       accept: call.stream ? 'text/event-stream' : 'application/json',
@@ -118,12 +122,7 @@ export class ProtocolChatTransport {
       ...auth.headers,
     };
 
-    return {
-      url,
-      displayUrl: describeRequestUrl(url, target.urlSuffix ?? ''),
-      headers,
-      body: JSON.stringify(call.body),
-    };
+    return { url, headers, body: JSON.stringify(call.body) };
   }
 
   private urlFor(base: URL, call: ProviderChatCall): string {

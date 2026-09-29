@@ -79,6 +79,18 @@ export function buildRequestAuth(input: {
 }
 
 /**
+ * The signal a provider call carries: the client's own when there is one, always bounded by the timeout.
+ * Both, never either: a client signal that replaces the budget would leave a provider which accepts the
+ * connection and then says nothing hanging until the client gives up, which is exactly what the budget is
+ * for. Measured before the fix: a 60 ms budget was still pending past 500 ms on a chat call.
+ */
+function requestSignal(input: JsonRequestInput): AbortSignal {
+  const budget = AbortSignal.timeout(input.timeoutMs);
+
+  return input.signal === undefined ? budget : AbortSignal.any([input.signal, budget]);
+}
+
+/**
  * One request to a provider endpoint. Every failure is a `ProviderFailure` with a fixed message: the
  * caught error is dropped on purpose, because it can quote headers, the URL or the response body.
  */
@@ -87,7 +99,7 @@ async function send(input: JsonRequestInput): Promise<ProviderHttpResponse> {
 
   try {
     return await input.fetch(input.url, {
-      signal: input.signal ?? AbortSignal.timeout(input.timeoutMs),
+      signal: requestSignal(input),
       ...(input.headers === undefined ? {} : { headers: input.headers }),
       ...(input.method === undefined ? {} : { method: input.method }),
       ...(input.body === undefined ? {} : { body: input.body }),

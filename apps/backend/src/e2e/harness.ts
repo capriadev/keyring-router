@@ -123,15 +123,19 @@ export async function startStubProvider(options: StubOptions = {}): Promise<Stub
         const parsed = JSON.parse(body) as { model?: string; stream?: boolean };
 
         if (parsed.stream === true) {
-          // Written in two socket chunks on purpose: a frame split across reads is the case that breaks
-          // a naive parser, so the end to end run exercises it.
+          // The second frame leaves in two pieces with a pause between them, so a read really can carry half
+          // a frame: a parser that assumes each socket read holds whole frames fails this run. The pause is
+          // what makes the split certain instead of hoping the kernel keeps two writes apart.
+          const second = `data: ${JSON.stringify(chunkFrame('desde el stub'))}\n\n`;
+          const splitAt = Math.floor(second.length / 2);
+
           response.writeHead(200, { 'content-type': 'text/event-stream' });
           response.write(`data: ${JSON.stringify(chunkFrame('hola '))}\n\n`);
-          response.end(
-            `data: ${JSON.stringify(chunkFrame('desde el stub'))}\n\n` +
-              `data: ${JSON.stringify(finishFrame())}\n\n` +
-              'data: [DONE]\n\n',
-          );
+          response.write(second.slice(0, splitAt));
+          setTimeout(() => {
+            response.write(second.slice(splitAt));
+            response.end(`data: ${JSON.stringify(finishFrame())}\n\n` + 'data: [DONE]\n\n');
+          }, 25);
           return;
         }
 
