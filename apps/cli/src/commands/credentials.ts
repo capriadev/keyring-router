@@ -1,17 +1,7 @@
+import type { Credential, CatalogRefreshResult, ValidationResult } from '@keyring-router/contracts';
 import { EXIT, request, type CommandContext } from '../client.js';
 import { parseFlags, requiredPositional, stringFlag } from '../args.js';
 import { info, printJson, printRows, promptSecret } from '../output.js';
-
-interface Credential {
-  readonly id: string;
-  readonly namespace: string;
-  readonly providerId: string;
-  readonly baseUrl: string;
-  readonly authKind: string;
-  readonly secretHint: string | null;
-  readonly lastValidatedAt: number | null;
-  readonly lastRefreshError: string | null;
-}
 
 const AUTH_KINDS = ['none', 'api_key'] as const;
 
@@ -127,10 +117,8 @@ async function addCommand(argv: readonly string[], context: CommandContext): Pro
 async function validateCommand(argv: readonly string[]): Promise<number> {
   const parsed = parseFlags(argv, {});
   const credential = await credentialByNamespace(requiredPositional(parsed, 'namespace'));
-  const result = (await request('POST', `/api/credentials/${credential.id}/validate`)).body as {
-    ok: boolean;
-    detail: string;
-  };
+  const result = (await request('POST', `/api/credentials/${credential.id}/validate`))
+    .body as ValidationResult;
 
   info(result.detail);
 
@@ -140,9 +128,8 @@ async function validateCommand(argv: readonly string[]): Promise<number> {
 async function refreshCommand(argv: readonly string[]): Promise<number> {
   const parsed = parseFlags(argv, { json: { type: 'boolean', description: 'machine readable output' } });
   const credential = await credentialByNamespace(requiredPositional(parsed, 'namespace'));
-  const result = (
-    await request('POST', `/api/credentials/${credential.id}/refresh`)
-  ).body as { discovered: number; exposed: number };
+  const result = (await request('POST', `/api/credentials/${credential.id}/refresh`))
+    .body as CatalogRefreshResult;
 
   info(`${result.discovered} discovered, ${result.exposed} exposed by policy`);
 

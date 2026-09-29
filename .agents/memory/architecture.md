@@ -285,6 +285,8 @@ repo root/
 │   │       └── types/
 │   ├── bot-discord/              Discord bot app
 │   └── frontend/                 Next.js UI
+├── packages/                     wire shapes shared by the API and its clients
+
 ├── docker/                       compose for container `pyrite` + instances
 ├── docs/                         human-readable philosophy/manifesto
 ├── logs/                         runtime logs, one folder per process (gitkept)

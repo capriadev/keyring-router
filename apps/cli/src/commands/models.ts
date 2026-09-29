@@ -1,18 +1,7 @@
+import type { CatalogModel, ExposedModel } from '@keyring-router/contracts';
 import { EXIT, request, type CommandContext } from '../client.js';
 import { booleanFlag, parseFlags } from '../args.js';
 import { info, printJson, printRows } from '../output.js';
-
-interface ExposedModel {
-  readonly namespacedId: string;
-  readonly providerId: string;
-  readonly displayName: string;
-}
-
-interface CatalogModel {
-  readonly namespacedId: string;
-  readonly providerId: string;
-  readonly exposed: boolean;
-}
 
 /**
  * `kr models`: the models a client may call. `--catalog` shows the discovered catalog with its exposure

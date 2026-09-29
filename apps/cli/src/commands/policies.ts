@@ -1,18 +1,7 @@
+import type { Credential, PolicyRule } from '@keyring-router/contracts';
 import { EXIT, request, type CommandContext } from '../client.js';
 import { parseFlags, requiredPositional, stringFlag } from '../args.js';
 import { info, printJson, printRows } from '../output.js';
-
-interface PolicyRule {
-  readonly id: string;
-  readonly credentialId: string | null;
-  readonly pattern: string;
-  readonly effect: string;
-}
-
-interface Credential {
-  readonly id: string;
-  readonly namespace: string;
-}
 
 /**
  * `kr policy`: the rules that decide which discovered models are exposed. A pattern matches the namespaced

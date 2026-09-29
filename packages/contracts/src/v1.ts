@@ -1,3 +1,5 @@
+import type { ApiErrorCode } from './api.js';
+
 /**
  * The wire shapes of the `/v1` surface, the endpoint a client points its tools at. They follow the two
  * protocols a client can speak: the OpenAI chat completions shape and the Anthropic Messages shape. The
@@ -173,7 +175,7 @@ export interface OpenAiErrorBody {
     readonly message: string;
     readonly type: string;
     readonly param: string | null;
-    readonly code: string;
+    readonly code: ApiErrorCode;
   };
 }
 

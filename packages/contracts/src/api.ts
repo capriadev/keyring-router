@@ -10,7 +10,7 @@
 /** Every non-2xx response uses this body. `code` is stable, `message` never carries a secret. */
 export interface ApiErrorBody {
   readonly error: {
-    readonly code: string;
+    readonly code: ApiErrorCode;
     readonly message: string;
   };
 }

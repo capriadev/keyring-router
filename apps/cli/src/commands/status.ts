@@ -1,18 +1,7 @@
+import type { Credential, HealthResponse, ModelsResponse } from '@keyring-router/contracts';
 import { EXIT, request, type ApiResult, type CommandContext } from '../client.js';
 import { booleanFlag, parseFlags } from '../args.js';
 import { info, printJson } from '../output.js';
-
-interface HealthResponse {
-  readonly status: string;
-  readonly version: string;
-  readonly uptimeSeconds: number;
-}
-
-interface CredentialSummary {
-  readonly namespace: string;
-  readonly providerId: string;
-  readonly authKind: string;
-}
 
 /** `kr status`: what the gateway is, and whether it has anything to route with. */
 export async function statusCommand(context: CommandContext): Promise<number> {
@@ -33,8 +22,8 @@ export async function statusCommand(context: CommandContext): Promise<number> {
   }
 
   const health = (await request('GET', '/api/health')).body as HealthResponse;
-  const credentials = (await request('GET', '/api/credentials')).body as readonly CredentialSummary[];
-  const models = (await request('GET', '/api/models')).body as readonly unknown[];
+  const credentials = (await request('GET', '/api/credentials')).body as readonly Credential[];
+  const models = (await request('GET', '/api/models')).body as ModelsResponse;
 
   info(`gateway   ${health.status} (version ${health.version}, up ${Math.round(health.uptimeSeconds)}s)`);
   info(`credentials ${credentials.length}`);

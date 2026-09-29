@@ -1,9 +1,18 @@
 import { HttpException } from '@nestjs/common';
+import type { ApiErrorCode as ContractApiErrorCode } from '@keyring-router/contracts';
 import { DomainError, type DomainErrorCode } from '../bll/errors.js';
 import { redact } from '../bll/credentials/redaction.js';
 import { RoutingError, type RoutingErrorCode } from '../bll/routing/errors.js';
 import { ProviderFailure } from '../types/provider.js';
 
+/**
+ * The codes this gateway can answer with. The union is declared here because the status map below is built
+ * from the domain and routing codes, and the contract declares the same list for clients.
+ *
+ * The two assertions under it are what keeps the declarations from drifting: a code added here and not
+ * there, or the other way round, stops this file from compiling. The audit found that link missing, and
+ * proved it by adding a code to this union without a single workspace noticing.
+ */
 export type ApiErrorCode =
   | DomainErrorCode
   | RoutingErrorCode
@@ -12,6 +21,10 @@ export type ApiErrorCode =
   | 'route_not_found'
   | 'request_rejected'
   | 'internal_error';
+
+type AssertAssignable<From extends To, To> = From;
+type GatewayCodesAreContractCodes = AssertAssignable<ApiErrorCode, ContractApiErrorCode>;
+type ContractCodesAreGatewayCodes = AssertAssignable<ContractApiErrorCode, ApiErrorCode>;
 
 const INTERNAL_MESSAGE = 'unexpected server error';
 

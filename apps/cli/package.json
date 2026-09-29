@@ -14,6 +14,7 @@
     "kr": "node --import tsx src/index.ts"
   },
   "dependencies": {
+    "@keyring-router/contracts": "*",
     "node-windows": "^1.0.0-beta.8"
   },
   "devDependencies": {
