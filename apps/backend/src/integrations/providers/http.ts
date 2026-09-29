@@ -9,11 +9,22 @@ import type { ProtocolAuth } from './protocol-adapter.js';
 export interface ProviderHttpResponse {
   readonly status: number;
   text(): Promise<string>;
+  /**
+   * The body as it arrives, for a call that asked for a stream. A test double that only models a
+   * buffered answer leaves it absent, which is why every reader treats it as optional.
+   */
+  readonly body?: AsyncIterable<Uint8Array> | null;
 }
 
 export type ProviderFetch = (
   url: string,
-  init: { readonly signal: AbortSignal; readonly headers?: Readonly<Record<string, string>> },
+  init: {
+    readonly signal: AbortSignal;
+    readonly headers?: Readonly<Record<string, string>>;
+    /** Set on the calls that write: the model list is a GET, a chat is a POST. */
+    readonly method?: string;
+    readonly body?: string;
+  },
 ) => Promise<ProviderHttpResponse>;
 
 /** A provider that does not answer within this budget is `unreachable`. */
@@ -25,6 +36,11 @@ export interface JsonRequestInput {
   readonly operation: string;
   readonly url: string;
   readonly headers?: Readonly<Record<string, string>>;
+  /** A writing call declares its method and its body; a reading call leaves both out. */
+  readonly method?: string;
+  readonly body?: string;
+  /** The client's own signal, when the call has to stop the moment the client is gone. */
+  readonly signal?: AbortSignal;
   readonly fetch: ProviderFetch;
   readonly timeoutMs: number;
   readonly fail: FailureFactory;
@@ -63,21 +79,27 @@ export function buildRequestAuth(input: {
 }
 
 /**
- * Reads JSON from one provider endpoint. Every failure is a `ProviderFailure` with a fixed message: the
+ * One request to a provider endpoint. Every failure is a `ProviderFailure` with a fixed message: the
  * caught error is dropped on purpose, because it can quote headers, the URL or the response body.
  */
-export async function requestJson(input: JsonRequestInput): Promise<unknown> {
+async function send(input: JsonRequestInput): Promise<ProviderHttpResponse> {
   const { label, operation } = input;
-  let response: ProviderHttpResponse;
 
   try {
-    response = await input.fetch(input.url, {
-      signal: AbortSignal.timeout(input.timeoutMs),
+    return await input.fetch(input.url, {
+      signal: input.signal ?? AbortSignal.timeout(input.timeoutMs),
       ...(input.headers === undefined ? {} : { headers: input.headers }),
+      ...(input.method === undefined ? {} : { method: input.method }),
+      ...(input.body === undefined ? {} : { body: input.body }),
     });
   } catch {
     throw input.fail('unreachable', `${label} did not answer ${operation}`);
   }
+}
+
+/** An authentication failure is named apart, because it is the one the user can fix by editing a credential. */
+function checkStatus(response: ProviderHttpResponse, input: JsonRequestInput): void {
+  const { label, operation } = input;
 
   if (response.status === 401 || response.status === 403) {
     throw input.fail('unauthorized', `${label} rejected ${operation} with HTTP ${response.status}`);
@@ -86,6 +108,14 @@ export async function requestJson(input: JsonRequestInput): Promise<unknown> {
   if (response.status < 200 || response.status >= 300) {
     throw input.fail('unknown', `${label} answered ${operation} with HTTP ${response.status}`);
   }
+}
+
+/** Reads JSON from one provider endpoint. */
+export async function requestJson(input: JsonRequestInput): Promise<unknown> {
+  const { label, operation } = input;
+  const response = await send(input);
+
+  checkStatus(response, input);
 
   let body: string;
 
@@ -100,6 +130,24 @@ export async function requestJson(input: JsonRequestInput): Promise<unknown> {
   } catch {
     throw input.fail('invalid_response', `${label} did not return JSON for ${operation}`);
   }
+}
+
+/**
+ * One streamed call, handed back as it arrives: nothing is buffered on the way in. The status is checked
+ * first, because a provider that refuses the request has to fail like any other call instead of yielding
+ * frames that came out of an error page.
+ */
+export async function requestStream(input: JsonRequestInput): Promise<AsyncIterable<Uint8Array>> {
+  const { label, operation } = input;
+  const response = await send(input);
+
+  checkStatus(response, input);
+
+  if (response.body === undefined || response.body === null) {
+    throw input.fail('invalid_response', `${label} answered ${operation} without a stream`);
+  }
+
+  return response.body;
 }
 
 /**

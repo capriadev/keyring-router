@@ -1,10 +1,12 @@
 import { HttpException } from '@nestjs/common';
 import { DomainError, type DomainErrorCode } from '../bll/errors.js';
 import { redact } from '../bll/credentials/redaction.js';
+import { RoutingError, type RoutingErrorCode } from '../bll/routing/errors.js';
 import { ProviderFailure } from '../types/provider.js';
 
 export type ApiErrorCode =
   | DomainErrorCode
+  | RoutingErrorCode
   | 'invalid_body'
   | 'provider_failure'
   | 'route_not_found'
@@ -27,6 +29,28 @@ const DOMAIN_ERROR_STATUS: Record<DomainErrorCode, number> = {
   invalid_policy_rule: 400,
 };
 
+/** HTTP status per routing failure. A model the facade cannot serve is not a client mistake. */
+const ROUTING_ERROR_STATUS: Record<RoutingErrorCode, number> = {
+  model_not_found: 404,
+  chat_not_supported: 422,
+  invalid_chat_request: 400,
+};
+
+/**
+ * A provider id that does not exist is a missing resource when the path named it - `GET
+ * /api/providers/:id` - and a wrong reference when it arrived inside a body, which is what creating a
+ * credential with an unknown provider is. Only the lookup status differs, so the code stays the same.
+ */
+const LOOKUP_METHOD = 'GET';
+
+/**
+ * Route facts a status may depend on. They are read from the request, never from the failure, because
+ * bll raises a code and the gateway decides what an HTTP status means for it.
+ */
+export interface ErrorRequestContext {
+  readonly method?: string;
+}
+
 /** Raised by the zod pipe when a body, query or param does not match its schema. */
 export class InvalidBodyError extends Error {
   constructor(readonly detail: string) {
@@ -45,10 +69,18 @@ export interface ResolvedApiError {
  * Maps any thrown value to the body every non-2xx response uses. Every message leaves through the
  * redaction module, so a value that reached a message by accident still never reaches a client.
  */
-export function resolveApiError(exception: unknown): ResolvedApiError {
+export function resolveApiError(exception: unknown, context: ErrorRequestContext = {}): ResolvedApiError {
   if (exception instanceof DomainError) {
     return {
-      status: DOMAIN_ERROR_STATUS[exception.code],
+      status: domainErrorStatus(exception.code, context),
+      code: exception.code,
+      message: redact(exception.message),
+    };
+  }
+
+  if (exception instanceof RoutingError) {
+    return {
+      status: ROUTING_ERROR_STATUS[exception.code],
       code: exception.code,
       message: redact(exception.message),
     };
@@ -77,4 +109,13 @@ export function resolveApiError(exception: unknown): ResolvedApiError {
   }
 
   return { status: 500, code: 'internal_error', message: INTERNAL_MESSAGE };
+}
+
+/** The status of a business failure, which is the table plus the one lookup case. */
+function domainErrorStatus(code: DomainErrorCode, context: ErrorRequestContext): number {
+  if (code === 'unsupported_provider' && context.method === LOOKUP_METHOD) {
+    return 404;
+  }
+
+  return DOMAIN_ERROR_STATUS[code];
 }

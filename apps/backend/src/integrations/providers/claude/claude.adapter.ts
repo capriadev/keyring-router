@@ -19,6 +19,8 @@ import {
   type ProviderFetch,
 } from '../http.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../protocol-adapter.js';
+import type { ProviderChatCall } from '../../../types/chat-transport.js';
+import { ProtocolChatTransport } from '../chat-transport.js';
 
 /** `GET /v1/models` of the Anthropic Messages API and of the gateways that mirror it. */
 const modelsResponseSchema = z.object({
@@ -55,10 +57,25 @@ export class ClaudeAdapter implements ProtocolAdapter {
 
   private readonly now: () => number;
 
+  /** The chat transport of this protocol: one implementation, shared by every provider that speaks it. */
+  private readonly chatTransport: ProtocolChatTransport;
+
   constructor(options: ClaudeAdapterOptions = {}) {
     this.fetchImpl = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.now = options.now ?? Date.now;
+    this.chatTransport = new ProtocolChatTransport({
+      format: 'claude',
+      deps: { fetch: this.fetchImpl, timeoutMs: this.timeoutMs },
+    });
+  }
+
+  chat(target: ProtocolRequestTarget, call: ProviderChatCall): Promise<unknown> {
+    return this.chatTransport.chat(target, call);
+  }
+
+  chatStream(target: ProtocolRequestTarget, call: ProviderChatCall): AsyncIterable<unknown> {
+    return this.chatTransport.chatStream(target, call);
   }
 
   async validateCredential(target: ProtocolRequestTarget): Promise<ValidationResult> {

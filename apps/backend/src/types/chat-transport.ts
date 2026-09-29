@@ -6,6 +6,11 @@
 import type { ProtocolRequestTarget } from '../integrations/providers/protocol-adapter.js';
 
 export interface ProviderChatCall {
+  /**
+   * The model id the provider knows, when the protocol names it outside the body. Gemini carries it in
+   * the URL path, so a transport that cannot see it could not build the endpoint at all.
+   */
+  readonly model?: string;
   /** The request body in the provider's own shape, already translated. */
   readonly body: Readonly<Record<string, unknown>>;
   readonly stream: boolean;

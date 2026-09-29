@@ -230,6 +230,85 @@ await checks.run('a broken provider answers 502 and stores a secret free error',
   stub.heal();
 });
 
+// The own API: the endpoint a client points at, over the same policy filtered listing.
+const MODEL = 'local/qwen2.5:7b';
+
+await checks.run('GET /v1/models serves the same set as /api/models', async () => {
+  const openai = await api('GET', '/v1/models');
+  const internal = await api('GET', '/api/models');
+  assert.equal(openai.status, 200);
+  const listed = (openai.body as Json).data.map((entry: Json) => entry.id).sort();
+  const exposed = (internal.body as Json[]).map((model) => model.namespacedId).sort();
+  assert.deepEqual(listed, exposed);
+  assert.deepEqual(listed, ['local/llama3.2:3b', 'local/qwen2.5:7b']);
+});
+
+await checks.run('POST /v1/chat/completions answers in OpenAI shape', async () => {
+  const response = await api('POST', '/v1/chat/completions', {
+    model: MODEL,
+    messages: [{ role: 'user', content: 'hola' }],
+  });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  const body = response.body as Json;
+  assert.equal(body.object, 'chat.completion');
+  assert.equal(body.model, MODEL);
+  assert.equal(body.choices[0].message.content, 'hola desde el stub');
+  assert.equal(body.choices[0].finish_reason, 'stop');
+  assert.equal(body.usage.total_tokens, 7);
+});
+
+await checks.run('POST /v1/chat/completions streams SSE frames and the sentinel', async () => {
+  const response = await fetch(`${gateway.baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ model: MODEL, stream: true, messages: [{ role: 'user', content: 'hola' }] }),
+  });
+  assert.equal(response.status, 200);
+  const text = await response.text();
+  const frames = text
+    .split('\n\n')
+    .map((block) => block.trim())
+    .filter((block) => block.startsWith('data:'));
+  assert.ok(frames.length >= 3, `expected frames, got: ${text}`);
+  assert.equal(frames.at(-1), 'data: [DONE]');
+  const joined = frames
+    .map((frame) => frame.replace(/^data: /, ''))
+    .filter((payload) => payload !== '[DONE]')
+    .map((payload) => JSON.parse(payload) as Json)
+    .map((frame) => frame.choices?.[0]?.delta?.content ?? '')
+    .join('');
+  assert.equal(joined, 'hola desde el stub');
+});
+
+await checks.run('POST /v1/messages answers a Claude shaped client', async () => {
+  const response = await api('POST', '/v1/messages', {
+    model: MODEL,
+    max_tokens: 64,
+    messages: [{ role: 'user', content: 'hola' }],
+  });
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  const body = response.body as Json;
+  assert.equal(body.type, 'message');
+  assert.equal(body.role, 'assistant');
+  assert.equal(body.content[0].text, 'hola desde el stub');
+  assert.equal(body.stop_reason, 'end_turn');
+});
+
+await checks.run('a model the policy does not expose cannot be reached through /v1', async () => {
+  const denied = await api('POST', '/api/policies', {
+    pattern: 'local/llama3.2:3b',
+    effect: 'deny',
+  });
+  assert.equal(denied.status, 201);
+  const response = await api('POST', '/v1/chat/completions', {
+    model: 'local/llama3.2:3b',
+    messages: [{ role: 'user', content: 'hola' }],
+  });
+  assert.ok(response.status >= 400 && response.status < 500, `expected a refusal, got ${response.status}`);
+  const removed = await api('DELETE', `/api/policies/${(denied.body as Json).id}`);
+  assert.equal(removed.status, 204);
+});
+
 await gateway.close();
 await stub.close();
 await guarded.close();

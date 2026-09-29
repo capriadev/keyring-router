@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CATALOG, findCatalogEntry } from '../../integrations/catalog/catalog.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../../integrations/providers/protocol-adapter.js';
+import type { ChatCapableAdapter } from '../../types/chat-transport.js';
 import type {
   AdapterTarget,
   AuthKind,
@@ -25,6 +26,12 @@ interface NormalizedAdapter {
   readonly providerId?: string;
   /** What a one-provider adapter accepts; a protocol adapter answers to the catalog instead. */
   readonly authKinds?: readonly AuthKind[];
+  /**
+   * The chat transport, when the adapter carries one. A protocol without a chat implementation keeps
+   * failing loudly at the facade instead of pretending it can answer a completion.
+   */
+  readonly chat?: ChatCapableAdapter['chat'];
+  readonly chatStream?: ChatCapableAdapter['chatStream'];
   validateCredential(target: ProtocolRequestTarget): Promise<ValidationResult>;
   discoverCatalog(target: ProtocolRequestTarget): Promise<DiscoveredModelRecord[]>;
 }
@@ -191,6 +198,7 @@ function normalize(adapter: RegisteredAdapter): NormalizedAdapter {
   if ('format' in adapter) {
     return {
       format: adapter.format,
+      ...chatMethods(adapter),
       validateCredential: (target) => adapter.validateCredential(target),
       discoverCatalog: (target) => adapter.discoverCatalog(target),
     };
@@ -204,9 +212,31 @@ function normalize(adapter: RegisteredAdapter): NormalizedAdapter {
   };
 }
 
+/**
+ * The chat methods of an adapter that has them, bound to the adapter so a method that reads state of its
+ * own keeps working after it is carried through. An adapter without a chat transport contributes nothing,
+ * which is why the registry can hold protocols that only validate and discover.
+ */
+function chatMethods(
+  adapter: RegisteredAdapter,
+): Pick<ChatCapableAdapter, 'chat' | 'chatStream'> | Record<string, never> {
+  const capable = adapter as Partial<ChatCapableAdapter>;
+
+  if (typeof capable.chat !== 'function' || typeof capable.chatStream !== 'function') {
+    return {};
+  }
+
+  return {
+    chat: (target, call) => capable.chat?.call(adapter, target, call) as Promise<unknown>,
+    chatStream: (target, call) => capable.chatStream?.call(adapter, target, call) as AsyncIterable<unknown>,
+  };
+}
+
 function toProtocolAdapter(format: ProviderFormat, adapter: NormalizedAdapter): ProtocolAdapter {
   return {
     format,
+    ...(adapter.chat === undefined ? {} : { chat: adapter.chat }),
+    ...(adapter.chatStream === undefined ? {} : { chatStream: adapter.chatStream }),
     validateCredential: (target) => adapter.validateCredential(target),
     discoverCatalog: (target) => adapter.discoverCatalog(target),
   };

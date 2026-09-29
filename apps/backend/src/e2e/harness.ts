@@ -48,6 +48,29 @@ function send(response: ServerResponse, status: number, payload: unknown): void 
   response.end(JSON.stringify(payload));
 }
 
+/** One OpenAI shaped streamed increment, as a provider writes it. */
+function chunkFrame(delta: string): Record<string, unknown> {
+  return {
+    id: 'chatcmpl-stub',
+    object: 'chat.completion.chunk',
+    created: 0,
+    model: 'stub',
+    choices: [{ index: 0, delta: { content: delta }, finish_reason: null }],
+  };
+}
+
+/** The last frame before the sentinel: the stop reason and the usage the provider reports. */
+function finishFrame(): Record<string, unknown> {
+  return {
+    id: 'chatcmpl-stub',
+    object: 'chat.completion.chunk',
+    created: 0,
+    model: 'stub',
+    choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 },
+  };
+}
+
 export async function startStubProvider(options: StubOptions = {}): Promise<StubProvider> {
   const requests: RequestLog[] = [];
   const models = options.models ?? ['qwen2.5:7b', 'llama3.2:3b'];
@@ -93,6 +116,53 @@ export async function startStubProvider(options: StubOptions = {}): Promise<Stub
 
       if (request.url === '/v1/models') {
         send(response, 200, { object: 'list', data: models.map((id) => ({ id, object: 'model' })) });
+        return;
+      }
+
+      if (request.method === 'POST' && request.url === '/v1/chat/completions') {
+        const parsed = JSON.parse(body) as { model?: string; stream?: boolean };
+
+        if (parsed.stream === true) {
+          // Written in two socket chunks on purpose: a frame split across reads is the case that breaks
+          // a naive parser, so the end to end run exercises it.
+          response.writeHead(200, { 'content-type': 'text/event-stream' });
+          response.write(`data: ${JSON.stringify(chunkFrame('hola '))}\n\n`);
+          response.end(
+            `data: ${JSON.stringify(chunkFrame('desde el stub'))}\n\n` +
+              `data: ${JSON.stringify(finishFrame())}\n\n` +
+              'data: [DONE]\n\n',
+          );
+          return;
+        }
+
+        send(response, 200, {
+          id: 'chatcmpl-stub',
+          object: 'chat.completion',
+          created: 0,
+          model: parsed.model ?? 'stub',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'hola desde el stub' },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 },
+        });
+        return;
+      }
+
+      if (request.method === 'POST' && request.url === '/v1/messages') {
+        send(response, 200, {
+          id: 'msg_stub',
+          type: 'message',
+          role: 'assistant',
+          model: 'stub',
+          content: [{ type: 'text', text: 'hola desde el stub' }],
+          stop_reason: 'end_turn',
+          stop_sequence: null,
+          usage: { input_tokens: 3, output_tokens: 4 },
+        });
         return;
       }
 
