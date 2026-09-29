@@ -8,4 +8,4 @@ One line per feature. Planned features may be registered here without a spec yet
 Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active|blocked|completed]
 -->
 
-#1 First vertical slice (Ollama) - credential registry plus Ollama adapter, policy evaluation and model listing over the local API [spec: 001-first-vertical-slice-ollama.md] [status: active]
+(No active features.)

@@ -11,12 +11,13 @@ Update at session close. This is not a changelog: it is the state of the work.
 -->
 
 ## Last session
-- Base remains a skeleton: no specs (`last_id: 0`), no drizzle config, no provider integration.
+- Spec 001 complete and verified on `feature/001-first-vertical-slice`: config, Ollama adapter, dal with migration 0000, bll, gateway and the web panel.
 
 ## Next up
-- Spec 001 for the first vertical slice: credential registry, provider adapter, policy, model listing. Blocked until the first provider is decided.
-- Decide `CLAUDE.md`: restore the pointer to `AGENTS.md` or commit the deletion deliberately.
-- Local `main` is stale versus `origin/main` (PR #3 already merged remotely); refresh before any merge.
+- Decide the merge of `feature/001-first-vertical-slice` and `chore/agent-docs-alignment`; neither branch was pushed.
+- Spec 002: cloud credential storage (encryption) and the OpenAI-compatible facade over the existing policy-filtered listing.
+- Close the two uncommitted leftovers: `CLAUDE.md` and the `discarded/` bank description.
+- Keep the explicit `@Inject` decorators: `tsx` does not emit `design:paramtypes`, so they are load-bearing (audit finding W4).
 
 ## Open decisions (unresolved, blocking or not)
-- First provider adapter and OpenAI-compatible API surface: blocks spec 001 (full catalog in `architecture.md`).
+- Credential deletion: a scoped policy rule currently blocks the delete through the foreign key; decide it in its own spec (full catalog in `architecture.md`).

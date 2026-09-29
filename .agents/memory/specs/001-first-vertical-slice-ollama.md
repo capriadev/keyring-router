@@ -206,4 +206,6 @@ Applied rules:
 
 ## Status
 
-active
+completed on 2026-09-29.
+
+Evidence: commits `cb400fe` to `8e50eee` on `feature/001-first-vertical-slice`; 83 automated tests passing; an independent audit kept at `temp/w4-report.md` (gitignored) and a 17 case end-to-end run over a real loopback socket. The only criterion not reproduced in its literal form is `npm run dev:backend`: `tsx watch` can only be stopped by killing the process, so the health check was verified against the same code path on a temporary port instead.
