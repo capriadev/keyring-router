@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { randomSecret } from '../../dal/testing/secret-fixtures.js';
 import { AuthHeaderError, buildAuthHeaders, withQuery } from './auth-headers.js';
 
-const SECRET = 'kr-secret-9f8e7d6c';
+/** Generated at run time by the shared fixture module: no spec declares a secret of its own. */
+const SECRET = randomSecret();
 
 describe('buildAuthHeaders', () => {
   it('sends nothing for authType none, with or without a header name', () => {

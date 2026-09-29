@@ -4,9 +4,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { describe, it } from 'node:test';
 
 import { ProviderFailure, type AdapterTarget } from '../../../types/provider.js';
+import { randomSecret } from '../../../dal/testing/secret-fixtures.js';
 import { OllamaAdapter, type ProviderFetch } from './ollama.adapter.js';
 
-const SECRET = 'kr-secret-9f8e7d6c';
+/** Generated at run time by the shared fixture module: no spec declares a secret of its own. */
+const SECRET = randomSecret();
 const BODY_MARKER = 'raw-provider-body-marker';
 
 interface StubRequest {
@@ -139,7 +141,7 @@ describe('OllamaAdapter', () => {
         const result = await adapter.validateCredential(target(stub.baseUrl));
 
         assert.equal(result.ok, true);
-        assert.equal(result.detail, 'Ollama 0.20.0 reachable over GET /api/version');
+        assert.equal(result.detail, `Ollama 0.20.0 reachable over GET ${stub.baseUrl}/api/version`);
         assert.equal(result.validatedAt, 1_700_000_000_000);
         assert.deepEqual(
           stub.requests.map((request) => `${request.method} ${request.url}`),
@@ -162,7 +164,10 @@ describe('OllamaAdapter', () => {
 
         assert.equal(failure.kind, 'invalid_response');
         assert.equal(failure.providerId, 'ollama');
-        assert.match(failure.message, /invalid payload for GET \/api\/version \(version\)/);
+        assert.match(
+          failure.message,
+          new RegExp(`invalid payload for GET ${stub.baseUrl}/api/version \\(version\\)`),
+        );
       } finally {
         await stub.close();
       }
@@ -235,7 +240,7 @@ describe('OllamaAdapter', () => {
         );
 
         assert.equal(failure.kind, 'invalid_response');
-        assert.equal(failure.message, 'Ollama did not return JSON for GET /api/tags');
+        assert.equal(failure.message, `Ollama did not return JSON for GET ${stub.baseUrl}/api/tags`);
         assertSecretFree(failure, [BODY_MARKER]);
       } finally {
         await stub.close();
@@ -251,7 +256,10 @@ describe('OllamaAdapter', () => {
         );
 
         assert.equal(failure.kind, 'invalid_response');
-        assert.equal(failure.message, 'Ollama returned an invalid payload for GET /api/tags (models)');
+        assert.equal(
+          failure.message,
+          `Ollama returned an invalid payload for GET ${stub.baseUrl}/api/tags (models)`,
+        );
         assertSecretFree(failure, [BODY_MARKER]);
       } finally {
         await stub.close();
@@ -270,7 +278,7 @@ describe('OllamaAdapter', () => {
         // A cross-field rule has no single field to blame, so Zod reports the entry index.
         assert.equal(
           failure.message,
-          'Ollama returned an invalid payload for GET /api/tags (models.0)',
+          `Ollama returned an invalid payload for GET ${stub.baseUrl}/api/tags (models.0)`,
         );
       } finally {
         await stub.close();
@@ -288,7 +296,7 @@ describe('OllamaAdapter', () => {
         assert.equal(failure.kind, 'invalid_response');
         assert.equal(
           failure.message,
-          'Ollama returned an invalid payload for GET /api/tags (models.0.size)',
+          `Ollama returned an invalid payload for GET ${stub.baseUrl}/api/tags (models.0.size)`,
         );
         assertSecretFree(failure, ['big']);
       } finally {
@@ -315,14 +323,13 @@ describe('OllamaAdapter', () => {
           );
 
           assert.equal(failure.kind, 'unauthorized');
-          assert.equal(failure.message, `Ollama rejected GET /api/tags with HTTP ${status}`);
+          assert.equal(failure.message, `Ollama rejected GET ${stub.baseUrl}/api/tags with HTTP ${status}`);
           assertSecretFree(failure, [
             SECRET,
             BODY_MARKER,
             'www-authenticate',
             'x-kr-debug',
             'Bearer',
-            stub.baseUrl,
           ]);
           assert.equal(JSON.stringify(failure).includes(SECRET), false);
           assert.equal(String(failure).includes(SECRET), false);
@@ -343,7 +350,7 @@ describe('OllamaAdapter', () => {
         );
 
         assert.equal(failure.kind, 'unknown');
-        assert.equal(failure.message, 'Ollama answered GET /api/tags with HTTP 503');
+        assert.equal(failure.message, `Ollama answered GET ${stub.baseUrl}/api/tags with HTTP 503`);
         assertSecretFree(failure, [BODY_MARKER]);
       } finally {
         await stub.close();
@@ -360,7 +367,33 @@ describe('OllamaAdapter', () => {
       );
 
       assert.equal(failure.kind, 'invalid_response');
-      assert.equal(failure.message, 'Ollama sent an unreadable body for GET /api/tags');
+      assert.equal(
+        failure.message,
+        'Ollama sent an unreadable body for GET http://127.0.0.1:11434/api/tags',
+      );
+      assertSecretFree(failure, [SECRET]);
+    });
+
+    it('refuses a base URL that embeds a credential, before any request', async () => {
+      let calls = 0;
+      const adapter = new OllamaAdapter({
+        fetch: () => {
+          calls += 1;
+
+          return Promise.reject(new Error('fetch must not be called'));
+        },
+      });
+
+      const failure = await captureFailure(() =>
+        adapter.discoverCatalog(target(`http://user:${SECRET}@127.0.0.1:11434`)),
+      );
+
+      assert.equal(calls, 0);
+      assert.equal(failure.kind, 'unknown');
+      assert.equal(
+        failure.message,
+        'Ollama base URL must not embed a credential: store it as the credential secret instead',
+      );
       assertSecretFree(failure, [SECRET]);
     });
 
@@ -371,8 +404,7 @@ describe('OllamaAdapter', () => {
       );
 
       assert.equal(failure.kind, 'unreachable');
-      assert.equal(failure.message, 'Ollama did not answer GET /api/tags');
-      assertSecretFree(failure, [baseUrl]);
+      assert.equal(failure.message, `Ollama did not answer GET ${baseUrl}/api/tags`);
     });
 
     it('maps a rejected fetch implementation to unreachable without quoting it', async () => {
@@ -385,8 +417,8 @@ describe('OllamaAdapter', () => {
       );
 
       assert.equal(failure.kind, 'unreachable');
-      assert.equal(failure.message, 'Ollama did not answer GET /api/version');
-      assertSecretFree(failure, [SECRET, BODY_MARKER, 'ECONNREFUSED', '11434']);
+      assert.equal(failure.message, 'Ollama did not answer GET http://127.0.0.1:11434/api/version');
+      assertSecretFree(failure, [SECRET, BODY_MARKER, 'ECONNREFUSED']);
     });
 
     it('maps a timeout to unreachable and always hands an abort signal to fetch', async () => {
@@ -410,7 +442,7 @@ describe('OllamaAdapter', () => {
       assert.ok(signalled instanceof AbortSignal);
       assert.equal(signalled.aborted, true);
       assert.equal(failure.kind, 'unreachable');
-      assert.equal(failure.message, 'Ollama did not answer GET /api/tags');
+      assert.equal(failure.message, 'Ollama did not answer GET http://127.0.0.1:11434/api/tags');
     });
 
     it('rejects an authKind it cannot serve before any request', async () => {

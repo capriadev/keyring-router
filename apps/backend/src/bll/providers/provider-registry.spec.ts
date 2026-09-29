@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../../integrations/providers/protocol-adapter.js';
 import { createProtocolAdapters } from '../../integrations/providers/protocol-adapters.js';
 import type { AdapterTarget, DiscoveredModelRecord } from '../../types/provider.js';
+import { randomSecret } from '../../dal/testing/secret-fixtures.js';
 import { createFakeAdapter } from '../testing/fake-adapter.js';
 import { UnsupportedProviderError } from '../errors.js';
 import { ProviderRegistry } from './provider-registry.js';
@@ -86,7 +87,7 @@ describe('ProviderRegistry', () => {
     });
   });
 
-  it('carries the catalog headers, the suffix and the scheme through to the adapter', async () => {
+  it('carries the catalog headers and the scheme through, and no client identity with them', async () => {
     const claude = probeAdapter('claude');
     const registry = new ProviderRegistry([claude]);
 
@@ -94,9 +95,13 @@ describe('ProviderRegistry', () => {
       .get('zai')
       .validateCredential({ baseUrl: 'https://api.z.ai/api/anthropic/v1/messages', authKind: 'none' });
 
-    assert.equal(claude.seen[0]?.urlSuffix, '?beta=true');
-    assert.deepEqual(claude.seen[0]?.headers, { 'Anthropic-Version': '2023-06-01' });
-    assert.deepEqual(claude.seen[0]?.auth, { authType: 'x-api-key' });
+    const carried = claude.seen[0];
+
+    // The only header a catalog entry of this format declares is protocol metadata, and no entry declares a
+    // URL suffix or a beta value any more (spec 009 F4).
+    assert.deepEqual(Object.keys(carried?.headers ?? {}), ['Anthropic-Version']);
+    assert.deepEqual(carried?.auth, { authType: 'x-api-key' });
+    assert.equal(carried?.urlSuffix, undefined);
   });
 
   it('reports the credential kinds a provider accepts: none when keyless, api_key when keyed', () => {
@@ -110,7 +115,8 @@ describe('ProviderRegistry', () => {
   it('hands the credential secret to the protocol adapter, keeping it off the adapter id', async () => {
     const openai = probeAdapter('openai');
     const registry = new ProviderRegistry([openai]);
-    const secret = 'kr-secret-9f8e7d6c';
+    // Generated at run time by the shared fixture module: no spec declares a secret of its own.
+    const secret = randomSecret();
 
     const adapter = registry.get('groq');
     await adapter.validateCredential({

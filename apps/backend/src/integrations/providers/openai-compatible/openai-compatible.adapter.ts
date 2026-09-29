@@ -6,18 +6,20 @@ import {
   type ValidationResult,
 } from '../../../types/provider.js';
 import { withQuery } from '../../catalog/auth-headers.js';
+import { DOCUMENTED_PATHS, modelsEndpointFor } from '../documented-paths.js';
 import {
+  absoluteHttpUrl,
   buildRequestAuth,
   DEFAULT_TIMEOUT_MS,
   describeInvalidPayload,
+  describeRequestUrl,
   requestJson,
   stripTrailingSlashes,
+  withDeclaredQuery,
+  type ProviderCall,
   type ProviderFetch,
 } from '../http.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../protocol-adapter.js';
-
-const CHAT_PATH = '/chat/completions';
-const MODELS_PATH = '/models';
 
 /** `GET /models` of an OpenAI compatible gateway. */
 const modelsResponseSchema = z.object({
@@ -64,22 +66,22 @@ export class OpenAiCompatibleAdapter implements ProtocolAdapter {
    * accepts the credential it was given, and one that rejects the credential answers 401.
    */
   async validateCredential(target: ProtocolRequestTarget): Promise<ValidationResult> {
-    const url = this.buildModelsUrl(target);
-    await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    await this.getModels(target, call);
 
-    return { ok: true, detail: `${target.label} answered GET ${new URL(url).pathname}`, validatedAt: this.now() };
+    return { ok: true, detail: `${target.label} answered GET ${call.displayUrl}`, validatedAt: this.now() };
   }
 
   async discoverCatalog(target: ProtocolRequestTarget): Promise<DiscoveredModelRecord[]> {
-    const url = this.buildModelsUrl(target);
-    const payload = await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    const payload = await this.getModels(target, call);
     const parsed = modelsResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
       throw this.fail(
         target,
         'invalid_response',
-        `${target.label} returned an invalid payload for GET ${new URL(url).pathname} (${describeInvalidPayload(parsed.error)})`,
+        `${target.label} returned an invalid payload for GET ${call.displayUrl} (${describeInvalidPayload(parsed.error)})`,
       );
     }
 
@@ -95,45 +97,39 @@ export class OpenAiCompatibleAdapter implements ProtocolAdapter {
   }
 
   /**
-   * A chat endpoint names its own model list: `/models` sits next to `/chat/completions`. A credential may
-   * hold the bare API root instead, so a base without the chat path is completed the way OpenAI compatible
-   * gateways document it.
+   * The call this adapter makes: the model list of the gateway, and the same URL as a detail may name it. A
+   * chat endpoint names its own model list, so a base without the chat path is completed the way OpenAI
+   * compatible gateways document it, and a bare host with the documented path of the format.
    */
-  private buildModelsUrl(target: ProtocolRequestTarget): string {
+  private modelsCall(target: ProtocolRequestTarget): ProviderCall {
     const base = stripTrailingSlashes(target.baseUrl);
 
     if (base === '') {
       throw this.fail(target, 'unknown', `${target.label} has no base URL to call`);
     }
 
-    let chatUrl: string;
+    const parsed = absoluteHttpUrl({
+      url: base,
+      label: target.label,
+      fail: (kind, message) => this.fail(target, kind, message),
+    });
+    const url = modelsEndpointFor(parsed, DOCUMENTED_PATHS[this.format]);
 
-    if (base.endsWith(CHAT_PATH)) {
-      chatUrl = base;
-    } else if (base.endsWith('/v1')) {
-      chatUrl = `${base}${CHAT_PATH}`;
-    } else {
-      const parsed = this.parseUrl(target, base);
-      chatUrl = parsed.pathname === '/' ? `${base}/v1${CHAT_PATH}` : `${base}${CHAT_PATH}`;
-    }
-
-    return `${chatUrl.slice(0, -CHAT_PATH.length)}${MODELS_PATH}`;
+    return { url, displayUrl: describeRequestUrl(url, target.urlSuffix ?? '') };
   }
 
-  private async getModels(target: ProtocolRequestTarget, url: string): Promise<unknown> {
+  private async getModels(target: ProtocolRequestTarget, call: ProviderCall): Promise<unknown> {
     const { headers, query } = buildRequestAuth({
       label: target.label,
       auth: target.auth,
       fail: (kind, message) => this.fail(target, kind, message),
     });
 
-    const withSuffix = addUrlSuffix(url, target.urlSuffix);
-    const parsed = this.parseUrl(target, withSuffix);
-    const finalUrl = withQuery(withSuffix, query);
+    const finalUrl = withQuery(withDeclaredQuery(call.url, target.urlSuffix), query);
 
     return requestJson({
       label: target.label,
-      operation: `GET ${parsed.pathname}`,
+      operation: `GET ${call.displayUrl}`,
       url: finalUrl,
       headers: { ...(target.headers ?? {}), ...headers },
       fetch: this.fetchImpl,
@@ -142,30 +138,8 @@ export class OpenAiCompatibleAdapter implements ProtocolAdapter {
     });
   }
 
-  /** A host can embed a credential, so only the path of a URL is ever quoted in a failure. */
-  private parseUrl(target: ProtocolRequestTarget, url: string): URL {
-    let parsed: URL;
-
-    try {
-      parsed = new URL(url);
-    } catch {
-      throw this.fail(target, 'unknown', `${target.label} base URL must be an absolute http or https URL`);
-    }
-
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw this.fail(target, 'unknown', `${target.label} base URL must be an absolute http or https URL`);
-    }
-
-    return parsed;
-  }
-
   private fail(target: ProtocolRequestTarget, kind: ProviderErrorKind, message: string): ProviderFailure {
     return new ProviderFailure(target.providerId, kind, message);
   }
-}
-
-/** The catalog carries the provider's own suffix, such as `?beta=true`, next to the base URL. */
-function addUrlSuffix(url: string, urlSuffix: string | undefined): string {
-  return urlSuffix === undefined ? url : `${url}${urlSuffix}`;
 }
 

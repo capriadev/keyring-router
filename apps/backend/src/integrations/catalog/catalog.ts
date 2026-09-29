@@ -1,7 +1,13 @@
-import { validateCatalogEntries, type ProviderCatalogEntry } from '../../types/provider-catalog.js';
+import {
+  validateCatalogEntries,
+  validateStandaloneProviders,
+  type ProviderCatalogEntry,
+  type StandaloneProvider,
+} from '../../types/provider-catalog.js';
 import { API_KEY_PROVIDERS } from './providers/apikey.js';
 import { LOCAL_PROVIDERS } from './providers/local.js';
 import { NO_AUTH_PROVIDERS } from './providers/noauth.js';
+import { STANDALONE_PROVIDER_DATA } from './providers/standalone.js';
 
 /**
  * The combined provider catalog. It is validated once, at module load, so a duplicate id, a duplicate alias
@@ -13,6 +19,15 @@ export const CATALOG: readonly ProviderCatalogEntry[] = validateCatalogEntries([
   ...LOCAL_PROVIDERS,
   ...NO_AUTH_PROVIDERS,
 ]);
+
+/**
+ * The providers whose protocol is the provider itself, validated against the catalog so no identifier is
+ * owned twice. They are served like any other provider and carry no declared model.
+ */
+export const STANDALONE_PROVIDERS: readonly StandaloneProvider[] = validateStandaloneProviders(
+  STANDALONE_PROVIDER_DATA,
+  CATALOG,
+);
 
 const BY_IDENTIFIER: ReadonlyMap<string, ProviderCatalogEntry> = new Map(
   CATALOG.flatMap((entry) => [
@@ -29,3 +44,8 @@ export function findCatalogEntry(providerId: string): ProviderCatalogEntry | und
 export function listCatalog(): readonly ProviderCatalogEntry[] {
   return CATALOG;
 }
+
+export function findStandaloneProvider(providerId: string): StandaloneProvider | undefined {
+  return STANDALONE_PROVIDERS.find((provider) => provider.providerId === providerId);
+}
+

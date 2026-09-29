@@ -7,6 +7,8 @@ import type {
   ProviderId,
   ValidationResult,
 } from '../../../types/provider.js';
+import { DOCUMENTED_PATHS } from '../documented-paths.js';
+import { describeRequestUrl } from '../http.js';
 import {
   ollamaTagsResponseSchema,
   ollamaVersionResponseSchema,
@@ -17,8 +19,12 @@ import {
 
 export const OLLAMA_PROVIDER_ID: ProviderId = 'ollama';
 
-const VERSION_PATH = '/api/version';
-const TAGS_PATH = '/api/tags';
+/**
+ * The two endpoints the protocol documents, under the root its format declares: a liveness probe, and the
+ * model list. Both hang from the base URL a credential carries.
+ */
+const VERSION_PATH = `${DOCUMENTED_PATHS.ollama.root}/version`;
+const TAGS_PATH = `${DOCUMENTED_PATHS.ollama.root}${DOCUMENTED_PATHS.ollama.models}`;
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 /** The part of the Fetch API this adapter uses. */
@@ -70,7 +76,7 @@ export class OllamaAdapter implements ProviderAdapter {
 
     return {
       ok: true,
-      detail: `Ollama ${version.version} reachable over GET ${VERSION_PATH}`,
+      detail: `Ollama ${version.version} reachable over GET ${describeRequestUrl(`${baseUrl}${VERSION_PATH}`)}`,
       validatedAt: this.now(),
     };
   }
@@ -78,8 +84,9 @@ export class OllamaAdapter implements ProviderAdapter {
   async discoverCatalog(target: AdapterTarget): Promise<DiscoveredModelRecord[]> {
     const baseUrl = resolveBaseUrl(target);
     const catalog = await this.getCatalog(baseUrl);
+    const endpoint = `${baseUrl}${TAGS_PATH}`;
 
-    return catalog.models.map(toDiscoveredModelRecord);
+    return catalog.models.map((summary) => toDiscoveredModelRecord(summary, endpoint));
   }
 
   private async getVersion(baseUrl: string): Promise<OllamaVersionResponse> {
@@ -87,7 +94,7 @@ export class OllamaAdapter implements ProviderAdapter {
     const parsed = ollamaVersionResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
-      throw invalidPayload(VERSION_PATH, parsed.error);
+      throw invalidPayload(`${baseUrl}${VERSION_PATH}`, parsed.error);
     }
 
     return parsed.data;
@@ -98,15 +105,17 @@ export class OllamaAdapter implements ProviderAdapter {
     const parsed = ollamaTagsResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
-      throw invalidPayload(TAGS_PATH, parsed.error);
+      throw invalidPayload(`${baseUrl}${TAGS_PATH}`, parsed.error);
     }
 
     return parsed.data;
   }
 
   private async requestJson(baseUrl: string, path: string): Promise<unknown> {
-    const operation = `GET ${path}`;
-    const response = await this.send(baseUrl, path);
+    const url = `${baseUrl}${path}`;
+    // Every message names the full URL requested, so a user sees which endpoint was called.
+    const operation = `GET ${describeRequestUrl(url)}`;
+    const response = await this.send(url, operation);
 
     if (response.status === 401 || response.status === 403) {
       throw new ProviderFailure(
@@ -146,9 +155,9 @@ export class OllamaAdapter implements ProviderAdapter {
     }
   }
 
-  private async send(baseUrl: string, path: string): Promise<ProviderHttpResponse> {
+  private async send(url: string, operation: string): Promise<ProviderHttpResponse> {
     try {
-      return await this.fetchImpl(`${baseUrl}${path}`, {
+      return await this.fetchImpl(url, {
         signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
@@ -156,7 +165,7 @@ export class OllamaAdapter implements ProviderAdapter {
       throw new ProviderFailure(
         OLLAMA_PROVIDER_ID,
         'unreachable',
-        `Ollama did not answer GET ${path}`,
+        `Ollama did not answer ${operation}`,
       );
     }
   }
@@ -164,8 +173,8 @@ export class OllamaAdapter implements ProviderAdapter {
 
 /**
  * Ollama is reached over plain http/https and never carries a credential. `target.secret` is not read, not
- * sent and not named in any error. The base URL stays out of messages too: it can embed `userinfo`, so
- * quoting it could leak a secret.
+ * sent and not named in any error. A message names the endpoint it called without its userinfo, because a
+ * base URL can embed a credential there.
  */
 function resolveBaseUrl(target: AdapterTarget): string {
   if (target.authKind !== 'none') {
@@ -197,15 +206,25 @@ function resolveBaseUrl(target: AdapterTarget): string {
     );
   }
 
+  // `fetch` refuses a URL that carries credentials, so a base URL with userinfo could never be called.
+  if (parsed.username !== '' || parsed.password !== '') {
+    throw new ProviderFailure(
+      OLLAMA_PROVIDER_ID,
+      'unknown',
+      'Ollama base URL must not embed a credential: store it as the credential secret instead',
+    );
+  }
+
   return baseUrl;
 }
 
 /**
  * Zod issue paths are built from this module's own keys plus array indices, never from provider values, so
- * naming them is safe: they point at the broken field without quoting the payload.
+ * naming them is safe: they point at the broken field without quoting the payload. The endpoint is named in
+ * full, without userinfo.
  */
 function invalidPayload(
-  path: string,
+  endpoint: string,
   error: { readonly issues: readonly { readonly path: readonly PropertyKey[] }[] },
 ): ProviderFailure {
   const fields = [
@@ -221,11 +240,11 @@ function invalidPayload(
   return new ProviderFailure(
     OLLAMA_PROVIDER_ID,
     'invalid_response',
-    `Ollama returned an invalid payload for GET ${path} (${fields})`,
+    `Ollama returned an invalid payload for GET ${describeRequestUrl(endpoint)} (${fields})`,
   );
 }
 
-function toDiscoveredModelRecord(summary: OllamaModelSummary): DiscoveredModelRecord {
+function toDiscoveredModelRecord(summary: OllamaModelSummary, endpoint: string): DiscoveredModelRecord {
   const providerModelId = summary.name ?? summary.model ?? null;
 
   // The schema already rejects an entry without an identifier; the guard keeps this function total.
@@ -233,7 +252,7 @@ function toDiscoveredModelRecord(summary: OllamaModelSummary): DiscoveredModelRe
     throw new ProviderFailure(
       OLLAMA_PROVIDER_ID,
       'invalid_response',
-      `Ollama returned a model entry without an identifier for GET ${TAGS_PATH}`,
+      `Ollama returned a model entry without an identifier for GET ${describeRequestUrl(endpoint)}`,
     );
   }
 

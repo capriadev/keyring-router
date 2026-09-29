@@ -168,7 +168,7 @@ export class ProviderRegistry {
   ): ProviderAdapter {
     return {
       id: providerId,
-      authKinds: entry === undefined ? (adapter.authKinds ?? ['none']) : kindsFor(entry),
+      authKinds: entry === undefined ? (adapter.authKinds ?? ['none']) : storableAuthKinds(entry),
       validateCredential: (target: AdapterTarget) =>
         adapter.validateCredential(toRequestTarget(providerId, entry, target)),
       discoverCatalog: (target: AdapterTarget) =>
@@ -177,7 +177,12 @@ export class ProviderRegistry {
   }
 }
 
-function kindsFor(entry: ProviderCatalogEntry): readonly AuthKind[] {
+/**
+ * What a credential may store for a catalog entry: `none` when the entry declares no credential, `api_key`
+ * when it declares where a credential goes. The single place this mapping exists, so the credential
+ * boundary, the listing and the registry cannot disagree.
+ */
+export function storableAuthKinds(entry: ProviderCatalogEntry): readonly AuthKind[] {
   return entry.authType === 'none' ? ['none'] : ['api_key'];
 }
 

@@ -6,18 +6,19 @@ import {
   type ValidationResult,
 } from '../../../types/provider.js';
 import { withQuery } from '../../catalog/auth-headers.js';
+import { DOCUMENTED_PATHS, modelsEndpointFor } from '../documented-paths.js';
 import {
+  absoluteHttpUrl,
   buildRequestAuth,
   DEFAULT_TIMEOUT_MS,
   describeInvalidPayload,
+  describeRequestUrl,
   requestJson,
   stripTrailingSlashes,
+  type ProviderCall,
   type ProviderFetch,
 } from '../http.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../protocol-adapter.js';
-
-const MESSAGES_PATH = '/messages';
-const MODELS_PATH = '/models';
 
 /** `GET /v1/models` of the Anthropic Messages API and of the gateways that mirror it. */
 const modelsResponseSchema = z.object({
@@ -61,22 +62,22 @@ export class ClaudeAdapter implements ProtocolAdapter {
   }
 
   async validateCredential(target: ProtocolRequestTarget): Promise<ValidationResult> {
-    const url = this.buildModelsUrl(target);
-    await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    await this.getModels(target, call);
 
-    return { ok: true, detail: `${target.label} answered GET ${new URL(url).pathname}`, validatedAt: this.now() };
+    return { ok: true, detail: `${target.label} answered GET ${call.displayUrl}`, validatedAt: this.now() };
   }
 
   async discoverCatalog(target: ProtocolRequestTarget): Promise<DiscoveredModelRecord[]> {
-    const url = this.buildModelsUrl(target);
-    const payload = await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    const payload = await this.getModels(target, call);
     const parsed = modelsResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
       throw this.fail(
         target,
         'invalid_response',
-        `${target.label} returned an invalid payload for GET ${new URL(url).pathname} (${describeInvalidPayload(parsed.error)})`,
+        `${target.label} returned an invalid payload for GET ${call.displayUrl} (${describeInvalidPayload(parsed.error)})`,
       );
     }
 
@@ -90,34 +91,39 @@ export class ClaudeAdapter implements ProtocolAdapter {
   }
 
   /**
-   * The model list of the Messages API sits beside `/messages`. A gateway that mirrors the protocol but not
-   * its model list answers 404, which is reported as a provider failure instead of a silent empty catalog.
+   * The model list of the Messages API sits beside `/messages`, and a host that names no path is completed
+   * with the path the format documents. The suffix a catalog entry declares belongs to the messages endpoint
+   * and not to the model list, so it is not carried over here.
    */
-  private buildModelsUrl(target: ProtocolRequestTarget): string {
-    const base = stripTrailingSlashes(stripQuery(target.baseUrl));
+  private modelsCall(target: ProtocolRequestTarget): ProviderCall {
+    const base = stripTrailingSlashes(target.baseUrl);
 
     if (base === '') {
       throw this.fail(target, 'unknown', `${target.label} has no base URL to call`);
     }
 
-    const messages = base.endsWith(MESSAGES_PATH) ? base : `${base}${MESSAGES_PATH}`;
-    const models = `${messages.slice(0, -MESSAGES_PATH.length)}${MODELS_PATH}`;
+    const parsed = absoluteHttpUrl({
+      url: base,
+      label: target.label,
+      fail: (kind, message) => this.fail(target, kind, message),
+    });
+    const url = modelsEndpointFor(parsed, DOCUMENTED_PATHS[this.format]);
 
-    return models;
+    return { url, displayUrl: describeRequestUrl(url) };
   }
 
-  private async getModels(target: ProtocolRequestTarget, url: string): Promise<unknown> {
+  private async getModels(target: ProtocolRequestTarget, call: ProviderCall): Promise<unknown> {
     const { headers, query } = buildRequestAuth({
       label: target.label,
       auth: target.auth,
       fail: (kind, message) => this.fail(target, kind, message),
     });
 
-    const finalUrl = withQuery(url, query);
+    const finalUrl = withQuery(call.url, query);
 
     return requestJson({
       label: target.label,
-      operation: `GET ${new URL(url).pathname}`,
+      operation: `GET ${call.displayUrl}`,
       url: finalUrl,
       headers: { ...(target.headers ?? {}), ...headers },
       fetch: this.fetchImpl,
@@ -129,11 +135,4 @@ export class ClaudeAdapter implements ProtocolAdapter {
   private fail(target: ProtocolRequestTarget, kind: ProviderErrorKind, message: string): ProviderFailure {
     return new ProviderFailure(target.providerId, kind, message);
   }
-}
-
-/** The catalog suffix, such as `?beta=true`, belongs to the messages endpoint and not to the model list. */
-function stripQuery(url: string): string {
-  const separator = url.indexOf('?');
-
-  return separator === -1 ? url : url.slice(0, separator);
 }

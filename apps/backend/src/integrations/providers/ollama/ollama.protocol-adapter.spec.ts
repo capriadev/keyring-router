@@ -75,7 +75,7 @@ describe('createOllamaProtocolAdapter', () => {
 
     assert.deepEqual(validation, {
       ok: true,
-      detail: 'Ollama 0.12.0 reachable over GET /api/version',
+      detail: `Ollama 0.12.0 reachable over GET ${server.baseUrl}/api/version`,
       validatedAt: 3,
     });
     assert.deepEqual(server.paths, ['/api/version', '/api/tags']);

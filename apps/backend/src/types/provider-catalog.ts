@@ -9,7 +9,7 @@ export type ProviderFormat = 'openai' | 'claude' | 'gemini' | 'ollama';
 
 export type CatalogAuthType = 'none' | 'bearer' | 'x-api-key' | 'query';
 
-export interface CatalogModel {
+export interface DeclaredModel {
   readonly id: string;
   readonly displayName: string;
   readonly contextLength?: number;
@@ -31,9 +31,23 @@ export interface ProviderCatalogEntry {
   readonly authPrefix?: string;
   readonly headers?: Readonly<Record<string, string>>;
   readonly requestDefaults?: Readonly<Record<string, unknown>>;
-  readonly models: readonly CatalogModel[];
+  readonly models: readonly DeclaredModel[];
   /** Where the entry came from, so attribution survives refactors. */
   readonly source: string;
+}
+
+/**
+ * A provider the gateway serves without a catalog entry: the protocol itself is the provider, so there is no
+ * endpoint of someone else to declare. Ollama is the one case. It declares no models either: a credential
+ * discovers them from the server it points at.
+ */
+export interface StandaloneProvider {
+  readonly providerId: string;
+  readonly displayName: string;
+  readonly format: ProviderFormat;
+  readonly authType: CatalogAuthType;
+  /** The documented default endpoint, so a client can prefill it. A credential may point elsewhere. */
+  readonly baseUrl: string;
 }
 
 export const PROVIDER_FORMATS: readonly ProviderFormat[] = ['openai', 'claude', 'gemini', 'ollama'];
@@ -56,7 +70,11 @@ export class CatalogError extends Error {
 
 const nonEmpty = z.string().min(1);
 
-export const catalogModelSchema = z.object({
+const absoluteHttpUrl = z
+  .string()
+  .regex(/^https?:\/\/\S+$/, 'baseUrl must be an absolute http or https URL');
+
+export const declaredModelSchema = z.object({
   id: nonEmpty,
   displayName: nonEmpty,
   contextLength: z.number().int().positive().optional(),
@@ -71,15 +89,23 @@ export const providerCatalogEntrySchema = z.object({
   alias: nonEmpty,
   displayName: nonEmpty,
   format: z.enum(PROVIDER_FORMATS),
-  baseUrl: z.string().regex(/^https?:\/\/\S+$/, 'baseUrl must be an absolute http or https URL'),
+  baseUrl: absoluteHttpUrl,
   urlSuffix: z.string().optional(),
   authType: z.enum(CATALOG_AUTH_TYPES),
   authHeader: nonEmpty.optional(),
   authPrefix: z.string().optional(),
   headers: z.record(nonEmpty, z.string()).optional(),
   requestDefaults: z.record(nonEmpty, z.unknown()).optional(),
-  models: z.array(catalogModelSchema).min(1, 'an entry declares at least one model'),
+  models: z.array(declaredModelSchema).min(1, 'an entry declares at least one model'),
   source: z.string().startsWith(CATALOG_SOURCE_PREFIX, 'every entry names its source'),
+});
+
+export const standaloneProviderSchema = z.object({
+  providerId: nonEmpty,
+  displayName: nonEmpty,
+  format: z.enum(PROVIDER_FORMATS),
+  authType: z.enum(CATALOG_AUTH_TYPES),
+  baseUrl: absoluteHttpUrl,
 });
 
 /**
@@ -176,15 +202,56 @@ export function validateCatalogEntries(entries: readonly unknown[]): readonly Pr
 
 /** The id is read only to name the broken entry; the entry itself stays unread until zod accepts it. */
 function readEntryId(candidate: unknown): string {
-  if (candidate !== null && typeof candidate === 'object' && 'id' in candidate) {
-    const { id } = candidate as { id: unknown };
+  if (candidate !== null && typeof candidate === 'object') {
+    const { id, providerId } = candidate as { id?: unknown; providerId?: unknown };
 
-    if (typeof id === 'string' && id !== '') {
-      return id;
+    for (const value of [id, providerId]) {
+      if (typeof value === 'string' && value !== '') {
+        return value;
+      }
     }
   }
 
   return '<unknown>';
+}
+
+/**
+ * Validates the protocols that are also their own provider. They share the identifier space of the catalog:
+ * an id or an alias owned by both lists would list one provider twice.
+ */
+export function validateStandaloneProviders(
+  providers: readonly unknown[],
+  entries: readonly ProviderCatalogEntry[],
+): readonly StandaloneProvider[] {
+  const owned = new Set(entries.flatMap((entry) => [entry.id, entry.alias]));
+  const validated: StandaloneProvider[] = [];
+
+  for (const candidate of providers) {
+    const parsed = standaloneProviderSchema.safeParse(candidate);
+
+    if (!parsed.success) {
+      const id = readEntryId(candidate);
+      const detail = parsed.error.issues
+        .map((issue) => `${issue.path.join('.') || 'provider'}: ${issue.message}`)
+        .join('; ');
+
+      throw new CatalogError(id, `standalone provider ${id} is invalid (${detail})`);
+    }
+
+    const provider = parsed.data;
+
+    if (owned.has(provider.providerId)) {
+      throw new CatalogError(
+        provider.providerId,
+        `provider identifier ${provider.providerId} is already declared by the catalog`,
+      );
+    }
+
+    owned.add(provider.providerId);
+    validated.push(provider);
+  }
+
+  return validated;
 }
 
 

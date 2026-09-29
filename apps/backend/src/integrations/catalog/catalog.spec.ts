@@ -8,9 +8,10 @@ import {
   CATALOG_AUTH_TYPES,
   PROVIDER_FORMATS,
   validateCatalogEntries,
+  validateStandaloneProviders,
   type ProviderCatalogEntry,
 } from '../../types/provider-catalog.js';
-import { CATALOG, findCatalogEntry, listCatalog } from './catalog.js';
+import { CATALOG, findCatalogEntry, findStandaloneProvider, listCatalog, STANDALONE_PROVIDERS } from './catalog.js';
 import { API_KEY_PROVIDERS } from './providers/apikey.js';
 import { LOCAL_PROVIDERS } from './providers/local.js';
 import { NO_AUTH_PROVIDERS } from './providers/noauth.js';
@@ -108,6 +109,43 @@ describe('validateCatalogEntries', () => {
   });
 });
 
+describe('validateStandaloneProviders', () => {
+  const standalone = {
+    providerId: 'ollama',
+    displayName: 'Ollama',
+    format: 'ollama' as const,
+    authType: 'none' as const,
+    baseUrl: 'http://localhost:11434',
+  };
+
+  it('accepts a protocol provider, and refuses one the catalog already owns', () => {
+    assert.equal(validateStandaloneProviders([standalone], CATALOG).length, 1);
+    assert.throws(
+      () => validateStandaloneProviders([{ ...standalone, providerId: 'groq' }], CATALOG),
+      (error: unknown) => error instanceof CatalogError && error.message.includes('already declared'),
+    );
+    // An alias of a catalog entry is an identifier too: a client may name a provider by either.
+    assert.throws(
+      () => validateStandaloneProviders([{ ...standalone, providerId: 'oc' }], CATALOG),
+      CatalogError,
+    );
+  });
+
+  it('refuses a malformed protocol provider without quoting it', () => {
+    assert.throws(
+      () => validateStandaloneProviders([{ ...standalone, baseUrl: 'localhost' }], CATALOG),
+      (error: unknown) =>
+        error instanceof CatalogError &&
+        error.entryId === 'ollama' &&
+        error.message.includes('baseUrl'),
+    );
+    assert.throws(
+      () => validateStandaloneProviders([{ ...standalone, format: 'openai-responses' }], CATALOG),
+      CatalogError,
+    );
+  });
+});
+
 describe('the shipped catalog', () => {
   it('loads, is non empty, and keeps every id and alias unique', () => {
     // An entry whose alias repeats its own id is legal; two entries sharing one identifier are not.
@@ -171,6 +209,58 @@ describe('the shipped catalog', () => {
 
     assert.equal(findCatalogEntry('groq')?.authType, 'bearer');
     assert.equal(findCatalogEntry('anthropic')?.authType, 'x-api-key');
+  });
+
+  it('carries no CLI identity, fingerprint or impersonation marker', () => {
+    // A marker in any of these fields would travel with every request that entry serves (spec 009 F4).
+    const markers = [
+      /claude[-_]code/i,
+      /claude[-_]cli/i,
+      /anthropic[-_]beta/i,
+      /codex[-_]cli/i,
+      /cursor[-_]agent/i,
+      /fingerprint/i,
+      /impersonat/i,
+      /^user[-_]agent$/i,
+      /^x[-_]app/i,
+      /^x[-_]title$/i,
+      /^http[-_]referer$/i,
+      /^origin$/i,
+    ];
+
+    for (const catalogEntry of CATALOG) {
+      const carried = [
+        catalogEntry.displayName,
+        catalogEntry.urlSuffix ?? '',
+        catalogEntry.authHeader ?? '',
+        catalogEntry.authPrefix ?? '',
+        ...Object.entries(catalogEntry.headers ?? {}).flatMap(([name, value]) => [name, value]),
+      ];
+
+      for (const value of carried) {
+        for (const marker of markers) {
+          assert.equal(marker.test(value), false, `${catalogEntry.id} carries ${String(marker)}: ${value}`);
+        }
+      }
+    }
+  });
+
+  it('carries no anonymous relay that resells another provider', () => {
+    for (const catalogEntry of CATALOG) {
+      assert.equal(catalogEntry.id.startsWith('g4f'), false, catalogEntry.id);
+      assert.notEqual(new URL(catalogEntry.baseUrl).hostname, 'g4f.space', catalogEntry.id);
+    }
+
+    for (const removed of ['g4f-gemini', 'g4f-groq', 'g4f-nvidia', 'g4f-ollama', 'g4f-pollinations']) {
+      assert.equal(findCatalogEntry(removed), undefined, removed);
+    }
+  });
+
+  it('lists the protocols that are their own provider beside the catalog entries', () => {
+    assert.deepEqual(STANDALONE_PROVIDERS.map((provider) => provider.providerId), ['ollama']);
+    assert.equal(findStandaloneProvider('ollama')?.format, 'ollama');
+    assert.equal(findStandaloneProvider('ollama')?.authType, 'none');
+    assert.equal(findStandaloneProvider('groq'), undefined);
   });
 
   it('stays ASCII, and its data carries no key, cookie, session or trace of the AGPL source', () => {

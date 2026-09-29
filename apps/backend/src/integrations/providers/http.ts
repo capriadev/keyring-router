@@ -33,6 +33,14 @@ export interface JsonRequestInput {
 /** Builds the secret-free failure a caller reports; nothing that was sent is quoted. */
 export type FailureFactory = (kind: ProviderErrorKind, message: string) => ProviderFailure;
 
+/** One call an adapter makes: where it goes, and the same endpoint as a message may name it. */
+export interface ProviderCall {
+  /** The endpoint the request goes to: origin, path, and any query the credential itself carries. */
+  readonly url: string;
+  /** The endpoint as a success or a failure names it: no userinfo, no credential query. */
+  readonly displayUrl: string;
+}
+
 /**
  * Builds the credential placement of one request. A scheme the module cannot serve is a provider failure,
  * not an error of its own: an adapter never leaks another module's error type, and the secret stays unquoted.
@@ -113,4 +121,68 @@ export function describeInvalidPayload(error: {
 /** Trailing slashes carry no meaning for these endpoints and would break a suffix match. */
 export function stripTrailingSlashes(url: string): string {
   return url.trim().replace(/\/+$/, '');
+}
+
+/**
+ * The base URL as a URL object, refusing anything that is not absolute http or https and anything that
+ * embeds a credential of its own. `fail` builds the failure, so the adapter reports it in its own voice, and
+ * no message quotes the URL: a base URL can embed a credential, so it is never named in a failure.
+ */
+export function absoluteHttpUrl(input: {
+  readonly url: string;
+  readonly label: string;
+  readonly fail: FailureFactory;
+}): URL {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(input.url);
+  } catch {
+    throw input.fail('unknown', `${input.label} base URL must be an absolute http or https URL`);
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw input.fail('unknown', `${input.label} base URL must be an absolute http or https URL`);
+  }
+
+  // `fetch` refuses a URL that carries credentials, so a base URL with userinfo could never be called.
+  // Reporting it here names the cause instead of blaming the provider for not answering.
+  if (parsed.username !== '' || parsed.password !== '') {
+    throw input.fail(
+      'unknown',
+      `${input.label} base URL must not embed a credential: store it as the credential secret instead`,
+    );
+  }
+
+  return parsed;
+}
+
+/**
+ * Names the URL a request was aimed at, so a success and a failure both say which endpoint was called. The
+ * scheme, the host and the path are what a user has to see; the userinfo and the query are where a credential
+ * hides, so neither is quoted, and only the query the catalog itself declares is carried over.
+ */
+export function describeRequestUrl(endpointUrl: string | URL, declaredQuery = ''): string {
+  const parsed = new URL(endpointUrl);
+
+  return `${parsed.origin}${parsed.pathname}${declaredQuery}`;
+}
+
+/**
+ * Applies the query a catalog entry declares to the URL of a call, as a query parameter rather than as a
+ * string glued to the end: the base URL may carry a query of its own, and two question marks would make an
+ * invalid URL.
+ */
+export function withDeclaredQuery(url: string, declared: string | undefined): string {
+  if (declared === undefined || declared === '') {
+    return url;
+  }
+
+  const parsed = new URL(url);
+
+  for (const [name, value] of new URLSearchParams(declared.replace(/^\?/, ''))) {
+    parsed.searchParams.set(name, value);
+  }
+
+  return parsed.toString();
 }

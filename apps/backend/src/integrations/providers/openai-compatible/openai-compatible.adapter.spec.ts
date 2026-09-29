@@ -4,10 +4,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { afterEach, describe, it } from 'node:test';
 
 import { ProviderFailure } from '../../../types/provider.js';
+import { randomSecret } from '../../../dal/testing/secret-fixtures.js';
 import type { ProtocolRequestTarget } from '../protocol-adapter.js';
 import { OpenAiCompatibleAdapter } from './openai-compatible.adapter.js';
 
-const SECRET = 'kr-secret-9f8e7d6c';
+/** Generated at run time by the shared fixture module: no spec declares a secret of its own. */
+const SECRET = randomSecret();
 const BODY_MARKER = 'raw-provider-body-marker';
 
 interface StubRequest {
@@ -110,13 +112,17 @@ async function stub(body: string, status = 200): Promise<StubServer> {
 }
 
 describe('OpenAiCompatibleAdapter', () => {
-  it('validates against the model list next to the chat endpoint', async () => {
+  it('validates against the model list next to the chat endpoint, naming the URL it called', async () => {
     const server = await stub(MODELS_PAYLOAD);
     const adapter = new OpenAiCompatibleAdapter({ now: () => 7 });
 
     const result = await adapter.validateCredential(target(`${server.baseUrl}/v1/chat/completions`));
 
-    assert.deepEqual(result, { ok: true, detail: 'Groq answered GET /v1/models', validatedAt: 7 });
+    assert.deepEqual(result, {
+      ok: true,
+      detail: `Groq answered GET ${server.baseUrl}/v1/models`,
+      validatedAt: 7,
+    });
     assert.equal(server.requests.length, 1);
     assert.equal(server.requests[0]?.method, 'GET');
     assert.equal(server.requests[0]?.url, '/v1/models');
@@ -127,11 +133,11 @@ describe('OpenAiCompatibleAdapter', () => {
     const adapter = new OpenAiCompatibleAdapter();
 
     await adapter.validateCredential(
-      target(`${server.baseUrl}/v1/chat/completions`, { headers: { 'X-Title': 'Endpoint Proxy' } }),
+      target(`${server.baseUrl}/v1/chat/completions`, { headers: { 'X-Catalog-Header': 'from the catalog' } }),
     );
 
     assert.equal(server.requests[0]?.headers.authorization, `Bearer ${SECRET}`);
-    assert.equal(server.requests[0]?.headers['x-title'], 'Endpoint Proxy');
+    assert.equal(server.requests[0]?.headers['x-catalog-header'], 'from the catalog');
   });
 
   it('sends no credential while no secret exists', async () => {
@@ -150,11 +156,11 @@ describe('OpenAiCompatibleAdapter', () => {
     const adapter = new OpenAiCompatibleAdapter();
 
     await adapter.validateCredential(target(server.baseUrl));
-    await adapter.validateCredential(target(`${server.baseUrl}/v1`, { urlSuffix: '?beta=true' }));
+    await adapter.validateCredential(target(`${server.baseUrl}/v1`, { urlSuffix: '?api-version=7' }));
 
     assert.deepEqual(
       server.requests.map((request) => request.url),
-      ['/v1/models', '/v1/models?beta=true'],
+      ['/v1/models', '/v1/models?api-version=7'],
     );
   });
 
@@ -192,9 +198,10 @@ describe('OpenAiCompatibleAdapter', () => {
 
     assert.equal(failure.kind, 'unauthorized');
     assert.equal(failure.providerId, 'groq');
-    assert.equal(failure.message, 'Groq rejected GET /v1/models with HTTP 401');
+    assert.equal(failure.message, `Groq rejected GET ${server.baseUrl}/v1/models with HTTP 401`);
     assert.equal(failure.message.includes(SECRET), false);
-    assert.equal(failure.message.includes(server.baseUrl), false);
+    // The endpoint is named in full; only the credential stays out of it.
+    assert.equal(failure.message.includes(server.baseUrl), true);
   });
 
   it('reports an unexpected payload as invalid_response, naming the broken field only', async () => {
@@ -206,7 +213,10 @@ describe('OpenAiCompatibleAdapter', () => {
     );
 
     assert.equal(failure.kind, 'invalid_response');
-    assert.match(failure.message, /Groq returned an invalid payload for GET \/v1\/models \(data\.0\.id\)/);
+    assert.match(
+      failure.message,
+      new RegExp(`Groq returned an invalid payload for GET ${server.baseUrl}/v1/models \\(data\\.0\\.id\\)`),
+    );
     assert.equal(failure.message.includes(BODY_MARKER), false);
   });
 
@@ -219,7 +229,7 @@ describe('OpenAiCompatibleAdapter', () => {
     );
 
     assert.equal(failure.kind, 'invalid_response');
-    assert.equal(failure.message, 'Groq did not return JSON for GET /v1/models');
+    assert.equal(failure.message, `Groq did not return JSON for GET ${server.baseUrl}/v1/models`);
     assert.equal(failure.message.includes(BODY_MARKER), false);
   });
 
@@ -243,7 +253,7 @@ describe('OpenAiCompatibleAdapter', () => {
     assert.ok(signalled instanceof AbortSignal);
     assert.equal(signalled.aborted, true);
     assert.equal(failure.kind, 'unreachable');
-    assert.equal(failure.message, 'Groq did not answer GET /v1/models');
+    assert.equal(failure.message, 'Groq did not answer GET http://127.0.0.1:11434/v1/models');
     assert.equal(failure.message.includes(SECRET), false);
   });
 

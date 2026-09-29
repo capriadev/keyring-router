@@ -4,10 +4,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { afterEach, describe, it } from 'node:test';
 
 import { ProviderFailure } from '../../../types/provider.js';
+import { randomSecret } from '../../../dal/testing/secret-fixtures.js';
 import type { ProtocolRequestTarget } from '../protocol-adapter.js';
 import { GeminiAdapter } from './gemini.adapter.js';
 
-const SECRET = 'kr-secret-9f8e7d6c';
+/** Generated at run time by the shared fixture module: no spec declares a secret of its own. */
+const SECRET = randomSecret();
 
 interface StubServer {
   readonly baseUrl: string;
@@ -90,14 +92,27 @@ async function captureFailure(run: () => Promise<unknown>): Promise<ProviderFail
 }
 
 describe('GeminiAdapter', () => {
-  it('validates against the model collection the base URL names', async () => {
+  it('validates against the model collection the base URL names, naming the URL it called', async () => {
     const server = await stub(MODELS_PAYLOAD);
     const adapter = new GeminiAdapter({ now: () => 13 });
 
     const result = await adapter.validateCredential(target(`${server.baseUrl}/v1beta/models`));
 
-    assert.deepEqual(result, { ok: true, detail: 'Gemini answered GET /v1beta/models', validatedAt: 13 });
+    assert.deepEqual(result, {
+      ok: true,
+      detail: `Gemini answered GET ${server.baseUrl}/v1beta/models`,
+      validatedAt: 13,
+    });
     assert.equal(server.requests[0]?.headers['x-goog-api-key'], SECRET);
+  });
+
+  it('completes a base URL that is only a host with the collection path Gemini documents', async () => {
+    const server = await stub(MODELS_PAYLOAD);
+    const adapter = new GeminiAdapter();
+
+    await adapter.validateCredential(target(server.baseUrl));
+
+    assert.equal(server.requests[0]?.url, '/v1beta/models');
   });
 
   it('places the credential in the query when the catalog declares the query scheme', async () => {
@@ -145,7 +160,7 @@ describe('GeminiAdapter', () => {
     );
 
     assert.equal(failure.kind, 'unauthorized');
-    assert.equal(failure.message, 'Gemini rejected GET /v1beta/models with HTTP 401');
+    assert.equal(failure.message, `Gemini rejected GET ${server.baseUrl}/v1beta/models with HTTP 401`);
     assert.equal(failure.message.includes(SECRET), false);
   });
 

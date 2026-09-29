@@ -4,10 +4,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { afterEach, describe, it } from 'node:test';
 
 import { ProviderFailure } from '../../../types/provider.js';
+import { randomSecret } from '../../../dal/testing/secret-fixtures.js';
 import type { ProtocolRequestTarget } from '../protocol-adapter.js';
 import { ClaudeAdapter } from './claude.adapter.js';
 
-const SECRET = 'kr-secret-9f8e7d6c';
+/** Generated at run time by the shared fixture module: no spec declares a secret of its own. */
+const SECRET = randomSecret();
 
 interface StubRequest {
   readonly url: string;
@@ -97,17 +99,61 @@ async function captureFailure(run: () => Promise<unknown>): Promise<ProviderFail
 }
 
 describe('ClaudeAdapter', () => {
-  it('validates against the model list beside the messages endpoint', async () => {
+  it('validates against the model list beside the messages endpoint, naming the URL it called', async () => {
     const server = await stub(MODELS_PAYLOAD);
     const adapter = new ClaudeAdapter({ now: () => 11 });
 
-    const result = await adapter.validateCredential(
-      target(`${server.baseUrl}/v1/messages`, { urlSuffix: '?beta=true' }),
+    const result = await adapter.validateCredential(target(`${server.baseUrl}/v1/messages`));
+
+    assert.deepEqual(result, {
+      ok: true,
+      detail: `Anthropic answered GET ${server.baseUrl}/v1/models`,
+      validatedAt: 11,
+    });
+    assert.equal(server.requests[0]?.url, '/v1/models');
+  });
+
+  it('completes a base URL that is only a host with the path the format documents', async () => {
+    const server = await stub(MODELS_PAYLOAD);
+    const adapter = new ClaudeAdapter();
+
+    await adapter.validateCredential(target(server.baseUrl));
+
+    assert.equal(server.requests[0]?.url, '/v1/models');
+  });
+
+  it('calls the model list without the query a catalog entry declares for its chat endpoint', async () => {
+    const server = await stub(MODELS_PAYLOAD);
+    const adapter = new ClaudeAdapter();
+
+    await adapter.validateCredential(
+      target(`${server.baseUrl}/v1/messages`, { urlSuffix: '?api-version=7' }),
     );
 
-    assert.deepEqual(result, { ok: true, detail: 'Anthropic answered GET /v1/models', validatedAt: 11 });
-    // The catalog suffix belongs to the messages endpoint, so the model list is called without it.
     assert.equal(server.requests[0]?.url, '/v1/models');
+  });
+
+  it('refuses a base URL that embeds a credential, before any request', async () => {
+    let calls = 0;
+    const adapter = new ClaudeAdapter({
+      fetch: () => {
+        calls += 1;
+
+        return Promise.reject(new Error('fetch must not be called'));
+      },
+    });
+
+    const failure = await captureFailure(() =>
+      adapter.validateCredential(target(`http://user:${SECRET}@127.0.0.1:9/v1/messages`)),
+    );
+
+    assert.equal(calls, 0);
+    assert.equal(failure.kind, 'unknown');
+    assert.equal(
+      failure.message,
+      'Anthropic base URL must not embed a credential: store it as the credential secret instead',
+    );
+    assert.equal(failure.message.includes(SECRET), false);
   });
 
   it('sends the credential in the header the catalog declares, plus its own protocol headers', async () => {
@@ -154,7 +200,7 @@ describe('ClaudeAdapter', () => {
     );
 
     assert.equal(failure.kind, 'unauthorized');
-    assert.equal(failure.message, 'Anthropic rejected GET /v1/models with HTTP 401');
+    assert.equal(failure.message, `Anthropic rejected GET ${server.baseUrl}/v1/models with HTTP 401`);
     assert.equal(failure.message.includes(SECRET), false);
   });
 
@@ -167,7 +213,7 @@ describe('ClaudeAdapter', () => {
     );
 
     assert.equal(failure.kind, 'unknown');
-    assert.equal(failure.message, 'Anthropic answered GET /v1/models with HTTP 404');
+    assert.equal(failure.message, `Anthropic answered GET ${server.baseUrl}/v1/models with HTTP 404`);
   });
 
   it('reports an unexpected payload as invalid_response, naming the broken field only', async () => {

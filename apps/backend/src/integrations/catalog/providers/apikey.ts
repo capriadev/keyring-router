@@ -11,6 +11,13 @@
  * URL, its service kind is 'llm' and it declares at least one model.
  * `authType: 'none'` marks the providers whose OmniRoute auth type is `optional` or `none`: an
  * endpoint that answers without a credential.
+ *
+ * Left out of the batch, with the reason each one is refused:
+ * - Anonymous relays that resell another provider's models without a credential the user owns: their
+ *   traffic is served by a third party, which is the reason the spec excludes harvested free tokens.
+ * - Client identity headers and CLI marker values that reached two Anthropic shaped entries: the spec
+ *   refuses that whole family as identity spoofing, and `catalog.spec.ts` scans every entry for it.
+ * `SOURCES.md` names every dropped entry, header and marker, one by one.
  */
 import type { ProviderCatalogEntry } from '../../../types/provider-catalog.js';
 
@@ -187,11 +194,10 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
     displayName: 'Anthropic',
     format: 'claude',
     baseUrl: 'https://api.anthropic.com/v1/messages',
-    urlSuffix: '?beta=true',
     authType: 'x-api-key',
     headers: {
+      // The API version is protocol metadata. No beta flag and no client identity travels with it.
       'Anthropic-Version': '2023-06-01',
-      'Anthropic-Beta': 'claude-code-20250219,interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05,advanced-tool-use-2025-11-20,effort-2025-11-24,structured-outputs-2025-12-15,fast-mode-2026-02-01,redact-thinking-2026-02-12,token-efficient-tools-2026-03-28,advisor-tool-2026-03-01,extended-cache-ttl-2025-04-11,cache-diagnosis-2026-04-07,code-execution-2025-08-25,skills-2025-10-02',
     },
     models: [
       {
@@ -248,10 +254,6 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
     format: 'openai',
     baseUrl: 'https://api.airforce/v1/chat/completions',
     authType: 'bearer',
-    headers: {
-      'HTTP-Referer': 'https://endpoint-proxy.local',
-      'X-Title': 'Endpoint Proxy',
-    },
     models: [
       {
         id: 'x-ai/grok-3',
@@ -1254,71 +1256,6 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
       { id: 'meta-llama-3.1-8b-instruct', displayName: 'meta-llama-3.1-8b-instruct' },
     ],
     source: 'OmniRoute (MIT) open-sse/config/providers/registry/friendliai/index.ts',
-  },
-  {
-    id: 'g4f-gemini',
-    alias: 'g4fgem',
-    displayName: 'g4f.space Gemini',
-    format: 'openai',
-    baseUrl: 'https://g4f.space/api/gemini/v1/chat/completions',
-    authType: 'none',
-    models: [
-      { id: 'models/gemini-2.5-flash', displayName: 'Gemini 2.5 Flash (g4f)' },
-      { id: 'models/gemini-2.5-pro', displayName: 'Gemini 2.5 Pro (g4f)' },
-    ],
-    source: 'OmniRoute (MIT) open-sse/config/providers/registry/g4f-gemini/index.ts',
-  },
-  {
-    id: 'g4f-groq',
-    alias: 'g4fgroq',
-    displayName: 'g4f.space Groq',
-    format: 'openai',
-    baseUrl: 'https://g4f.space/api/groq/v1/chat/completions',
-    authType: 'none',
-    models: [
-      { id: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B (g4f/Groq)' },
-      { id: 'llama-3.1-8b-instant', displayName: 'Llama 3.1 8B Instant (g4f/Groq)' },
-    ],
-    source: 'OmniRoute (MIT) open-sse/config/providers/registry/g4f-groq/index.ts',
-  },
-  {
-    id: 'g4f-nvidia',
-    alias: 'g4fnv',
-    displayName: 'g4f.space NVIDIA',
-    format: 'openai',
-    baseUrl: 'https://g4f.space/api/nvidia/v1/chat/completions',
-    authType: 'none',
-    models: [
-      { id: 'nvidia/nemotron-3-nano-30b-a3b', displayName: 'Nemotron 3 Nano 30B (g4f/NVIDIA)' },
-      { id: 'z-ai/glm-5.2', displayName: 'GLM 5.2 (g4f/NVIDIA)' },
-      { id: 'minimaxai/minimax-m2.7', displayName: 'MiniMax M2.7 (g4f/NVIDIA)' },
-    ],
-    source: 'OmniRoute (MIT) open-sse/config/providers/registry/g4f-nvidia/index.ts',
-  },
-  {
-    id: 'g4f-ollama',
-    alias: 'g4foll',
-    displayName: 'g4f.space Ollama',
-    format: 'openai',
-    baseUrl: 'https://g4f.space/api/ollama/v1/chat/completions',
-    authType: 'none',
-    models: [
-      { id: 'gemma3:4b', displayName: 'Gemma 3 4B (g4f/Ollama)' },
-    ],
-    source: 'OmniRoute (MIT) open-sse/config/providers/registry/g4f-ollama/index.ts',
-  },
-  {
-    id: 'g4f-pollinations',
-    alias: 'g4fpol',
-    displayName: 'g4f.space Pollinations',
-    format: 'openai',
-    baseUrl: 'https://g4f.space/api/pollinations/v1/chat/completions',
-    authType: 'none',
-    models: [
-      { id: 'openai', displayName: 'OpenAI (g4f/Pollinations)' },
-      { id: 'openai-fast', displayName: 'OpenAI Fast (g4f/Pollinations)' },
-    ],
-    source: 'OmniRoute (MIT) open-sse/config/providers/registry/g4f-pollinations/index.ts',
   },
   {
     id: 'galadriel',
@@ -2414,10 +2351,6 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
     format: 'openai',
     baseUrl: 'https://openrouter.ai/api/v1/chat/completions',
     authType: 'bearer',
-    headers: {
-      'HTTP-Referer': 'https://endpoint-proxy.local',
-      'X-Title': 'Endpoint Proxy',
-    },
     models: [
       { id: 'auto', displayName: 'Auto (Best Available)' },
     ],
@@ -2454,10 +2387,6 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
     format: 'openai',
     baseUrl: 'https://api.orcarouter.ai/v1/chat/completions',
     authType: 'bearer',
-    headers: {
-      'HTTP-Referer': 'https://endpoint-proxy.local',
-      'X-Title': 'Endpoint Proxy',
-    },
     models: [
       { id: 'orcarouter/auto', displayName: 'Auto (smart routing)' },
       {
@@ -3699,7 +3628,6 @@ export const API_KEY_PROVIDERS: readonly ProviderCatalogEntry[] = [
     displayName: 'Z.AI',
     format: 'claude',
     baseUrl: 'https://api.z.ai/api/anthropic/v1/messages',
-    urlSuffix: '?beta=true',
     authType: 'x-api-key',
     headers: {
       'Anthropic-Version': '2023-06-01',

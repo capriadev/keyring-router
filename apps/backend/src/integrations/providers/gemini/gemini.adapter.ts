@@ -6,17 +6,20 @@ import {
   type ValidationResult,
 } from '../../../types/provider.js';
 import { withQuery } from '../../catalog/auth-headers.js';
+import { DOCUMENTED_PATHS, modelsEndpointFor } from '../documented-paths.js';
 import {
+  absoluteHttpUrl,
   buildRequestAuth,
   DEFAULT_TIMEOUT_MS,
   describeInvalidPayload,
+  describeRequestUrl,
   requestJson,
   stripTrailingSlashes,
+  type ProviderCall,
   type ProviderFetch,
 } from '../http.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../protocol-adapter.js';
 
-const MODELS_PATH = '/models';
 const MODEL_PREFIX = 'models/';
 
 /**
@@ -64,22 +67,22 @@ export class GeminiAdapter implements ProtocolAdapter {
   }
 
   async validateCredential(target: ProtocolRequestTarget): Promise<ValidationResult> {
-    const url = this.buildModelsUrl(target);
-    await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    await this.getModels(target, call);
 
-    return { ok: true, detail: `${target.label} answered GET ${new URL(url).pathname}`, validatedAt: this.now() };
+    return { ok: true, detail: `${target.label} answered GET ${call.displayUrl}`, validatedAt: this.now() };
   }
 
   async discoverCatalog(target: ProtocolRequestTarget): Promise<DiscoveredModelRecord[]> {
-    const url = this.buildModelsUrl(target);
-    const payload = await this.getModels(target, url);
+    const call = this.modelsCall(target);
+    const payload = await this.getModels(target, call);
     const parsed = modelsResponseSchema.safeParse(payload);
 
     if (!parsed.success) {
       throw this.fail(
         target,
         'invalid_response',
-        `${target.label} returned an invalid payload for GET ${new URL(url).pathname} (${describeInvalidPayload(parsed.error)})`,
+        `${target.label} returned an invalid payload for GET ${call.displayUrl} (${describeInvalidPayload(parsed.error)})`,
       );
     }
 
@@ -93,40 +96,39 @@ export class GeminiAdapter implements ProtocolAdapter {
     }));
   }
 
-  private buildModelsUrl(target: ProtocolRequestTarget): string {
+  /**
+   * The model collection is the endpoint. A base URL that is only a host is completed with the path the
+   * format documents, `/v1beta/models`, instead of a `/models` that no Gemini server answers.
+   */
+  private modelsCall(target: ProtocolRequestTarget): ProviderCall {
     const base = stripTrailingSlashes(target.baseUrl);
 
     if (base === '') {
       throw this.fail(target, 'unknown', `${target.label} has no base URL to call`);
     }
 
-    let parsed: URL;
+    const parsed = absoluteHttpUrl({
+      url: base,
+      label: target.label,
+      fail: (kind, message) => this.fail(target, kind, message),
+    });
+    const url = modelsEndpointFor(parsed, DOCUMENTED_PATHS[this.format]);
 
-    try {
-      parsed = new URL(base);
-    } catch {
-      throw this.fail(target, 'unknown', `${target.label} base URL must be an absolute http or https URL`);
-    }
-
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw this.fail(target, 'unknown', `${target.label} base URL must be an absolute http or https URL`);
-    }
-
-    return base.endsWith(MODELS_PATH) ? base : `${base}${MODELS_PATH}`;
+    return { url, displayUrl: describeRequestUrl(url) };
   }
 
-  private async getModels(target: ProtocolRequestTarget, url: string): Promise<unknown> {
+  private async getModels(target: ProtocolRequestTarget, call: ProviderCall): Promise<unknown> {
     const { headers, query } = buildRequestAuth({
       label: target.label,
       auth: target.auth,
       fail: (kind, message) => this.fail(target, kind, message),
     });
 
-    const finalUrl = withQuery(url, query);
+    const finalUrl = withQuery(call.url, query);
 
     return requestJson({
       label: target.label,
-      operation: `GET ${new URL(url).pathname}`,
+      operation: `GET ${call.displayUrl}`,
       url: finalUrl,
       headers: { ...(target.headers ?? {}), ...headers },
       fetch: this.fetchImpl,
