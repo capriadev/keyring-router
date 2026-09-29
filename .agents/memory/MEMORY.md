@@ -11,13 +11,14 @@ Update at session close. This is not a changelog: it is the state of the work.
 -->
 
 ## Last session
-- Spec 001 complete, merged into main by fast-forward and published; `main` equals `origin/main` at `895db48`.
+- M1 to M6 and M8 complete on `feature/v1-gateway`: first slice, provider catalog, secrets, command line, Windows service, OpenAI compatible facade, shared contracts. Specs 001 to 003, 005 to 007, 009 and 010, all kept in `specs/`.
 
 ## Next up
-- Delete the two local branches fully contained in main: `chore/agent-docs-alignment` and `feature/001-first-vertical-slice`.
-- Spec 002: cloud credential storage (encryption) and the OpenAI-compatible facade over the existing policy-filtered listing.
-- Close the two uncommitted leftovers: `CLAUDE.md` and the `discarded/` bank description.
-- Keep the explicit `@Inject` decorators: `tsx` does not emit `design:paramtypes`, so they are load-bearing (audit finding W4).
+- Open scrutiny before merging: `integrations/providers/chat-transport.ts`, `sse.ts` and `packages/contracts` were written by the coordinating agent, not by an independent lane, so they still owe an external read.
+- M9 local interface (spec 008) is the chosen next milestone; M7 routing (spec 004) closes the code; M10 live discovery has no spec yet.
+- Teammate lanes are unusable until the Cline account is re-authenticated: three runs failed with `Unauthorized` this session.
+- User only: `kr service install` (elevation), the first run against a real provider key, then merge `feature/v1-gateway` into `main`.
 
 ## Open decisions (unresolved, blocking or not)
 - Credential deletion: a scoped policy rule currently blocks the delete through the foreign key; decide it in its own spec (full catalog in `architecture.md`).
+- Order of the last two milestones: interface before routing, or routing before interface.

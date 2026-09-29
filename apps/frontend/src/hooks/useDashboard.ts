@@ -12,12 +12,14 @@ import {
 import { fetchHealth } from '../services/api/health';
 import { listModels } from '../services/api/models';
 import { createPolicyRule } from '../services/api/policies';
+import { listProviders } from '../services/api/providers';
 import type {
   CatalogModel,
   Credential,
   CredentialInput,
   ExposedModel,
   HealthResponse,
+  ProviderDescriptor,
 } from '../types/api';
 
 export type ActionName = 'reload' | 'create' | 'validate' | 'refresh' | 'allow';
@@ -33,6 +35,8 @@ export type CredentialAction = 'validate' | 'refresh';
 export interface DashboardState {
   readonly health: HealthResponse | null;
   readonly credentials: readonly Credential[];
+  /** The provider catalog, so no form offers a hardcoded provider list. */
+  readonly providers: readonly ProviderDescriptor[];
   readonly catalog: readonly CatalogModel[];
   readonly models: readonly ExposedModel[];
   /** True while the initial or a manual full load runs. */
@@ -87,6 +91,7 @@ async function loadInto<T>(
 export function useDashboard(): DashboardState {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [credentials, setCredentials] = useState<readonly Credential[]>([]);
+  const [providers, setProviders] = useState<readonly ProviderDescriptor[]>([]);
   const [catalog, setCatalog] = useState<readonly CatalogModel[]>([]);
   const [models, setModels] = useState<readonly ExposedModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +108,7 @@ export function useDashboard(): DashboardState {
     const failures = await Promise.all([
       loadInto(fetchHealth(), setHealth, () => setHealth(null)),
       loadInto(listCredentials(), setCredentials),
+      loadInto(listProviders(), setProviders),
       loadInto(listCatalog(), setCatalog),
       loadInto(listModels(), setModels),
     ]);
@@ -193,6 +199,7 @@ export function useDashboard(): DashboardState {
   return {
     health,
     credentials,
+    providers,
     catalog,
     models,
     loading,

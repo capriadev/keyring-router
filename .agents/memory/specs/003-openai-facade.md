@@ -58,4 +58,4 @@ Out of scope: rotation, fallback and quota (spec 004), embeddings, images, audio
 
 ## Status
 
-pending
+completed on 2026-09-29, recorded late: the facade shipped with milestone M6 and the end to end suite covers it (`/v1/models` against `/api/models`, both completion shapes, streaming frames, the policy refusal and both error bodies). Its line in `features.md` was left behind when the milestone closed and is removed with this edit.

@@ -1,0 +1,16 @@
+{
+  "name": "@keyring-router/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wire shapes shared by the gateway API and every client of it.",
+  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "tsc": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

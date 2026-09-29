@@ -25,13 +25,13 @@ Out of scope: generating types from an OpenAPI document, sharing zod schemas, an
 
 ## Acceptance criteria
 
-- [ ] `packages/contracts` typechecks on its own and is part of the workspace scripts (`tsc` and `build`).
-- [ ] The backend's `types/api.ts` re-exports the shared shapes and the compatibility test fails when a field is removed or renamed on either side.
-- [ ] The frontend imports the shared package and no longer declares its own copy of any wire type.
-- [ ] No wire type is declared twice anywhere in the repository.
-- [ ] `GET /api/providers` in the frontend consumes the real shape, and the credential form offers the providers the API reports instead of a hardcoded list.
-- [ ] `architecture.md` documents the workspace and its ownership rule (wire shapes only).
-- [ ] The full bar still passes: typecheck, tests, build and the end to end run.
+- [x] `packages/contracts` typechecks on its own and is part of the workspace scripts (`tsc` and `build`).
+- [x] The backend's `types/api.ts` re-exports the shared shapes and the compatibility test fails when a field is removed or renamed on either side.
+- [x] The frontend imports the shared package and no longer declares its own copy of any wire type.
+- [x] No wire type is declared twice anywhere in the repository.
+- [x] `GET /api/providers` in the frontend consumes the real shape, and the credential form offers the providers the API reports instead of a hardcoded list.
+- [x] `architecture.md` documents the workspace and its ownership rule (wire shapes only).
+- [x] The full bar still passes: typecheck, tests, build and the end to end run.
 - [ ] An independent audit verifies the criteria and reports what it could not check.
 
 ## Risks
@@ -41,4 +41,6 @@ Out of scope: generating types from an OpenAPI document, sharing zod schemas, an
 
 ## Status
 
-pending
+implemented on 2026-09-29, with the independent audit still owed. The reference bar is green (typecheck of the four workspaces, 329 backend tests, 19 command line tests, build and the 27 case end to end run), and the drift check is proven by construction: adding a code to the shared union failed the frontend typecheck until its copy was written.
+
+What the audit still has to check, and why it is not closed here: the teammate lanes could not run this session (the account lost authorization), so the workspace, both re-export shims and `types/api.spec.ts` were written by the coordinating agent. That is the same scrutiny gap already flagged for the provider transport files, and it is recorded in `MEMORY.md` as open.

@@ -79,7 +79,7 @@ export default function HomePage() {
           </p>
         </header>
 
-        <CredentialForm pending={busy} onSubmit={dashboard.create} />
+        <CredentialForm pending={busy} providers={dashboard.providers} onSubmit={dashboard.create} />
 
         {dashboard.credentials.length === 0 ? (
           <p className={styles.empty}>Sin credenciales. Registra una para descubrir su catalogo.</p>

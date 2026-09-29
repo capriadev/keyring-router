@@ -1,4 +1,4 @@
-# Architecture - Keyring Router
+﻿# Architecture - Keyring Router
 
 Single source of truth for how Keyring Router is built. Update on every trade-off. Mark replaced decisions `[SUPERSEDED]` instead of deleting them.
 
@@ -22,6 +22,7 @@ Single source of truth for how Keyring Router is built. Update on every trade-of
 | Config (user-owned) | JSON/YAML plus SQLite metadata | Provider aliases, filters and preferences are versionable; secrets never enter tracked config. |
 | Runtime | Node.js 24.20.0 via nvm | Pinned by `.nvmrc`. |
 | CLI | `kr` | `kr serve` starts the backend; service installation is separate. |
+| Contracts (`packages/contracts`) | TypeScript, types only | The wire shapes of the API: gateway and clients describe the same bytes. No runtime code, no dependency. |
 | Windows startup | `node-windows` or NSSM | Rust is not required for the gateway or service registration. |
 
 ### Backend layers (`apps/backend/src`) - strict responsibilities
@@ -32,7 +33,11 @@ Single source of truth for how Keyring Router is built. Update on every trade-of
 - `services/` - focused internal cross-cutting services. These are not provider integrations.
 - `integrations/` - adapters for the external world, especially `providers/<provider>.client.ts`. The core never imports provider SDK details directly.
 - `config/` - typed boot and user configuration loading and validation.
-- `types/` - shared contracts used by more than one layer.
+- `types/` - shared contracts used by more than one layer. `types/api.ts` re-exports the wire shapes from `packages/contracts` and declares none of its own.
+
+### Shared wire shapes (`packages/contracts`)
+
+The bytes the API answers with, and the codes its refusals carry, are declared once in `@keyring-router/contracts`: structural types only, no runtime code, no zod, and no import from either app. The backend re-exports them through `types/api.ts` and proves at compile time that its domain types satisfy them (`types/api.spec.ts`); the frontend imports them through its own `types/api.ts` and keeps no copy. A shape is added or changed in the package, never in a client, and a client that reads a shape it does not re-export has gone around the single source.
 
 ### Provider adapter contract
 
@@ -85,6 +90,8 @@ repo root/
 │           ├── types/
 │           └── config/
 ├── docs/
+├── packages/
+│   └── contracts/                wire shapes shared by the API and its clients
 ├── .agents/
 └── .git/
 ```
@@ -188,6 +195,8 @@ repo root/
 ├── packages/persistence/        selected storage implementation
 ├── docker/                      optional PostgreSQL setup
 ├── docs/
+├── packages/
+│   └── contracts/                wire shapes shared by the API and its clients
 └── .agents/
 ```
 

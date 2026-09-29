@@ -1,5 +1,12 @@
 import type { ApiErrorBody, ApiErrorCode } from '../../types/api';
 
+/**
+ * The codes a client can report: the gateway's own, plus the two a transport failure produces when no
+ * answer exists at all. A server code is never invented here, and a transport failure is never dressed
+ * up as one: the copy below says either what the gateway said or that the gateway was not reached.
+ */
+export type ClientErrorCode = ApiErrorCode | 'network_error' | 'unreadable_response';
+
 /** Loopback address of the local gateway (`KR_HOST`/`KR_PORT` defaults). Public by design: not a secret. */
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:4310';
 
@@ -16,8 +23,14 @@ const ERROR_COPY = {
   auth_kind_unsupported: 'Ese tipo de autenticacion todavia no se puede guardar.',
   unsupported_provider: 'El proveedor no esta registrado en el gateway.',
   credential_not_found: 'La credencial ya no existe.',
+  secret_not_found: 'La credencial no tiene un secreto guardado.',
+  secret_undecryptable: 'El secreto guardado no se puede descifrar en esta instalacion.',
+  secret_key_unavailable: 'La clave de cifrado del gateway no esta disponible.',
   policy_not_found: 'La regla de politica ya no existe.',
   invalid_policy_rule: 'La regla de politica no es valida.',
+  model_not_found: 'Ese modelo no esta disponible para el gateway.',
+  chat_not_supported: 'El proveedor de ese modelo no soporta el protocolo de chat.',
+  invalid_chat_request: 'La peticion de chat no cumple el contrato del gateway.',
   invalid_body: 'La peticion no cumple el contrato del gateway.',
   provider_failure: 'El proveedor no respondio correctamente.',
   route_not_found: 'El gateway no reconoce esa ruta.',
@@ -25,11 +38,11 @@ const ERROR_COPY = {
   internal_error: 'El gateway fallo al procesar la peticion.',
   network_error: 'No hay respuesta del gateway. Verifica que este corriendo en la URL configurada.',
   unreadable_response: 'El gateway respondio con un cuerpo que no se pudo leer.',
-} satisfies Record<ApiErrorCode, string>;
+} satisfies Record<ClientErrorCode, string>;
 
 const FALLBACK_COPY = 'Ocurrio un error inesperado al hablar con el gateway.';
 
-function isApiErrorCode(value: string): value is ApiErrorCode {
+function isClientErrorCode(value: string): value is ClientErrorCode {
   return Object.prototype.hasOwnProperty.call(ERROR_COPY, value);
 }
 
@@ -38,12 +51,12 @@ export class ApiError extends Error {
   /** HTTP status, or 0 when the request never reached the gateway. */
   readonly status: number;
 
-  readonly code: ApiErrorCode;
+  readonly code: ClientErrorCode;
 
   /** Secret-free message produced by the gateway, kept for diagnostics. */
   readonly detail: string;
 
-  constructor(status: number, code: ApiErrorCode, detail: string) {
+  constructor(status: number, code: ClientErrorCode, detail: string) {
     super(code);
     this.name = 'ApiError';
     this.status = status;
@@ -61,7 +74,7 @@ export function describeApiError(error: unknown): string {
   return ERROR_COPY[error.code] ?? FALLBACK_COPY;
 }
 
-function codeFromStatus(status: number): ApiErrorCode {
+function codeFromStatus(status: number): ClientErrorCode {
   if (status === 404) {
     return 'route_not_found';
   }
@@ -86,7 +99,7 @@ async function readErrorBody(response: Response): Promise<ApiError> {
     if (error !== undefined && typeof error.code === 'string') {
       return new ApiError(
         response.status,
-        isApiErrorCode(error.code) ? error.code : codeFromStatus(response.status),
+        isClientErrorCode(error.code) ? error.code : codeFromStatus(response.status),
         typeof error.message === 'string' ? error.message : '',
       );
     }

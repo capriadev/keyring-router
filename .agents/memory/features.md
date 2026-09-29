@@ -8,8 +8,6 @@ One line per feature. Planned features may be registered here without a spec yet
 Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active|blocked|completed]
 -->
 
-#3 OpenAI compatible facade - expose /v1/models, /v1/chat/completions and /v1/messages with protocol translation [spec: 003-openai-facade.md] [status: pending]
 #4 Routing - choose among credentials by priority, lockout, quota and fallback chain [spec: 004-routing.md] [status: active]
 #8 Local UI - minimalist and micro detailed interface with three focused review passes [spec: 008-ui.md] [status: pending]
-#10 Shared API contracts - one source for the wire shapes the API serves and the UI consumes [spec: 010-shared-contracts.md] [status: pending]
 #11 Live provider discovery - read the catalog of providers that declare no static models so OpenRouter and peers can be listed [no spec yet] [status: pending]
