@@ -16,10 +16,10 @@
     "start:frontend": "npm run start --workspace=apps/frontend",
     "start:backend": "npm run start:prod --workspace=apps/backend",
     "tsc": "npm run tsc --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "orm": "npm run orm:generate",
     "orm:generate": "cd apps/backend && drizzle-kit generate",
-    "orm:migrate": "cd apps/backend && drizzle-kit migrate",
-    "orm:push": "cd apps/backend && drizzle-kit push",
+    "orm:migrate": "npm run db:migrate --workspace apps/backend",
     "orm:studio": "cd apps/backend && drizzle-kit studio",
     "back": "powershell -ExecutionPolicy Bypass -File ./backup.ps1"
   },
