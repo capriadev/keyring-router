@@ -11,10 +11,10 @@ Update at session close. This is not a changelog: it is the state of the work.
 -->
 
 ## Last session
-- Spec 001 complete and verified on `feature/001-first-vertical-slice`: config, Ollama adapter, dal with migration 0000, bll, gateway and the web panel.
+- Spec 001 complete, merged into main by fast-forward and published; `main` equals `origin/main` at `895db48`.
 
 ## Next up
-- Decide the merge of `feature/001-first-vertical-slice` and `chore/agent-docs-alignment`; neither branch was pushed.
+- Delete the two local branches fully contained in main: `chore/agent-docs-alignment` and `feature/001-first-vertical-slice`.
 - Spec 002: cloud credential storage (encryption) and the OpenAI-compatible facade over the existing policy-filtered listing.
 - Close the two uncommitted leftovers: `CLAUDE.md` and the `discarded/` bank description.
 - Keep the explicit `@Inject` decorators: `tsx` does not emit `design:paramtypes`, so they are load-bearing (audit finding W4).
