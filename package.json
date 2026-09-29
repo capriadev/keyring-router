@@ -18,6 +18,7 @@
     "tsc": "npm run tsc --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "e2e": "npm run e2e --workspace apps/backend",
+    "kr": "npm run kr --workspace apps/cli --",
     "orm": "npm run orm:generate",
     "orm:generate": "cd apps/backend && drizzle-kit generate",
     "orm:migrate": "npm run db:migrate --workspace apps/backend",

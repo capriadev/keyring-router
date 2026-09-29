@@ -1,0 +1,21 @@
+{
+  "name": "@keyring-router/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keyring Router command line: run the gateway and manage it from the terminal.",
+  "bin": {
+    "kr": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "tsc": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.spec.ts",
+    "kr": "node --import tsx src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "tsx": "^4.20.3",
+    "typescript": "^7.0.2"
+  }
+}

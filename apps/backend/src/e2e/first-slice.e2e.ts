@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   Checks,
   call,
@@ -307,6 +308,21 @@ await checks.run('a model the policy does not expose cannot be reached through /
   assert.ok(response.status >= 400 && response.status < 500, `expected a refusal, got ${response.status}`);
   const removed = await api('DELETE', `/api/policies/${(denied.body as Json).id}`);
   assert.equal(removed.status, 204);
+});
+
+await checks.run('the kr command line drives the gateway through its own API', async () => {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const cliEntry = resolve(process.cwd(), '..', 'cli', 'src', 'index.ts');
+  const run = promisify(execFile);
+  const { stdout } = await run(process.execPath, ['--import', 'tsx', cliEntry, 'status', '--json'], {
+    env: { ...process.env, KR_API_URL: gateway.baseUrl },
+  });
+  const parsed = JSON.parse(stdout) as Json;
+
+  assert.equal(parsed.health.status, 'ok');
+  assert.ok((parsed.credentials as Json[]).length >= 2, 'the command line should see both credentials');
+  assert.equal((parsed.models as Json[]).length, 2);
 });
 
 await gateway.close();
