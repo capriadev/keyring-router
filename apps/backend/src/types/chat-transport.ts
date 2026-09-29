@@ -9,6 +9,11 @@ export interface ProviderChatCall {
   /** The request body in the provider's own shape, already translated. */
   readonly body: Readonly<Record<string, unknown>>;
   readonly stream: boolean;
+  /**
+   * Aborted when the client goes away. A transport that carries it stops the upstream request instead of
+   * burning the credential's quota for an answer nobody will read.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**

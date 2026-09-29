@@ -5,7 +5,12 @@
  * about HTTP, and nothing here knows a provider id.
  */
 
-export type ChatFormat = 'openai' | 'claude' | 'gemini';
+/**
+ * The formats a chat request can be translated between. `ollama` is a provider format of its own for
+ * discovery, while its chat endpoint is OpenAI shaped (`/v1/chat/completions`), so a translation towards
+ * `ollama` is the identity translation and the adapter posts it to that endpoint.
+ */
+export type ChatFormat = 'openai' | 'claude' | 'gemini' | 'ollama';
 
 export interface ChatTextPart {
   readonly type: 'text';
