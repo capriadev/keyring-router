@@ -26,6 +26,9 @@ docker/redis-data/
 backup_*.sql
 *.sql.bak
 
+# local database files
+apps/backend/data/
+
 # logs
 logs/
 *.log

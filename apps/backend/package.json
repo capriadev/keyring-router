@@ -8,7 +8,10 @@
     "build": "tsc -p tsconfig.build.json",
     "start:dev": "tsx watch src/main.ts",
     "start:prod": "node dist/main.js",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.spec.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/dal/migrate.cli.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.2",
