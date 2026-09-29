@@ -12,8 +12,8 @@ Let a credential hold a secret encrypted at rest, so the cloud providers of spec
 ## Design
 
 - Cipher: AES-256-GCM, one random 12 byte IV per secret, authentication tag stored beside the ciphertext.
-- Key derivation: Argon2id over the boot pepper with a per-install random salt. The pepper lives in `.env` (`KR_SECRET_PEPPER`, 32 random bytes base64, gitignored); the salt lives in the database (`install_keys` table). Neither alone is enough: a stolen database file without the pepper stays opaque, and a leaked `.env` without the database stays useless.
-- Argon2id parameters are boot configuration, not hardcoded, with documented defaults and a validation pass at boot. If the native package cannot be validated on this machine the fallback is `node:crypto` scrypt with the same two-secret scheme, and that fallback gets recorded instead of silently swapped.
+- Key derivation: Argon2id over the boot pepper with a per-install random salt, through the built in `node:crypto` argon2 of Node 24 (`crypto.argon2("argon2id", { message, nonce, parallelism, memory, passes, tagLength })`). Verified on this machine: argon2id works and is deterministic for the same message, nonce and parameters. No native package and no build step are involved. The pepper lives in `.env` (`KR_SECRET_PEPPER`, 32 random bytes base64, gitignored); the salt lives in the database (`install_keys` table). Neither alone is enough: a stolen database file without the pepper stays opaque, and a leaked `.env` without the database stays useless.
+- The Argon2id parameters are boot configuration with documented defaults and a validation pass at boot. The Node runtime is already pinned by `.nvmrc`, so the built in implementation is stable for this project.
 - Storage on `credentials`: `secret_ciphertext`, `secret_iv`, `secret_tag`, `secret_version`, `secret_hint` (last four characters, for the UI only). The plaintext secret never reaches a column, a log, an error message or a response body.
 - Redaction is a module, not a habit: every log line, error message and support string that could carry credential data goes through it, and tests assert the absence of the secret in all of them.
 
@@ -56,7 +56,7 @@ Out of scope: passphrase unlock mode, the vault section, the physical USB key la
 ## Risks
 
 - Losing `KR_SECRET_PEPPER` makes stored secrets unrecoverable by design. The UI must warn before the first secret is saved.
-- Argon2 is a native package. It gets validated the same way better-sqlite3 was, before implementation, and the scrypt fallback is recorded rather than improvised.
+- Argon2 comes from `node:crypto`, so there is no native dependency to validate. The parameters stay boot configuration because they are the cost knob.
 - Rotation is the operation most likely to leave an unusable credential. It is transactional: new ciphertext and new version land together, or neither does.
 
 ## Status
