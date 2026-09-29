@@ -7,7 +7,7 @@ import { STORABLE_AUTH_KINDS, type AdapterTarget, type ValidationResult } from '
 import { AuthKindUnsupportedError, CredentialNotFoundError, InvalidInputError, NamespaceTakenError } from '../errors.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
 import { adapterTargetFor } from './adapter-target.js';
-import { nextSecretVersion, requireSecretKey, sealSecret } from './secrets.js';
+import { assertSecretTravelsInHeader, nextSecretVersion, requireSecretKey, sealSecret } from './secrets.js';
 
 /** Rejects anything the adapter could not use and stores the URL without a trailing slash. */
 function normalizeBaseUrl(raw: string): string {
@@ -44,7 +44,7 @@ export class CredentialService {
     }
 
     if (!STORABLE_AUTH_KINDS.includes(input.authKind)) {
-      throw new AuthKindUnsupportedError(input.authKind);
+      throw new AuthKindUnsupportedError(input.authKind, STORABLE_AUTH_KINDS);
     }
 
     if (this.credentials.findByNamespace(input.namespace) !== undefined) {
@@ -54,7 +54,7 @@ export class CredentialService {
     const adapter = this.registry.get(input.providerId);
 
     if (!adapter.authKinds.includes(input.authKind)) {
-      throw new AuthKindUnsupportedError(input.authKind, input.providerId);
+      throw new AuthKindUnsupportedError(input.authKind, adapter.authKinds, input.providerId);
     }
 
     // Refused instead of dropped in either direction: a secret for `none` is a mistake, and `api_key`
@@ -65,6 +65,13 @@ export class CredentialService {
 
     if (input.authKind === 'api_key' && input.secret === undefined) {
       throw new InvalidInputError('authKind api_key requires a secret');
+    }
+
+    // Last of the value checks, so the specific message wins when both apply. A secret that cannot
+    // travel in a header is never sealed: storing it would produce a credential that fails every call
+    // with a provider failure blaming the provider.
+    if (input.secret !== undefined) {
+      assertSecretTravelsInHeader(input.secret);
     }
 
     const persisted: Credential = {
@@ -118,6 +125,9 @@ export class CredentialService {
     if (credential.authKind === 'none') {
       throw new InvalidInputError('authKind none stores no secret: rotate a credential that has one');
     }
+
+    // Checked before anything is sealed, so a refused rotation leaves the stored secret untouched.
+    assertSecretTravelsInHeader(secret);
 
     const previous = this.credentials.readStoredSecret(id);
     const stored = sealSecret(

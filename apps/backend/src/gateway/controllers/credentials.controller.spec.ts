@@ -62,6 +62,26 @@ describe('CredentialsController', () => {
     assert.equal(controller.list().some((credential) => JSON.stringify(credential).includes(secret)), false);
   });
 
+  it('refuses a header unsafe secret through the domain rule too, when the body skips the schema', () => {
+    assert.throws(
+      () =>
+        controller.create({
+          namespace: 'unicode',
+          providerId: 'ollama',
+          baseUrl: 'https://api.example.test',
+          authKind: 'api_key',
+          secret: 'sk-\u4e2d\u6587-9f8e7d6c',
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof InvalidInputError);
+        assert.equal(error.code, 'invalid_input');
+        assert.match(error.message, /must be Latin-1 text/);
+        return true;
+      },
+    );
+    assert.deepEqual(controller.list(), []);
+  });
+
   it('rotates through the endpoint and answers with the new hint only', () => {
     const first = `${randomSecret()}0000`;
     const second = `${randomSecret()}1111`;

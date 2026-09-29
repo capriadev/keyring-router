@@ -37,12 +37,17 @@ export class NamespaceTakenError extends DomainError {
 }
 
 export class AuthKindUnsupportedError extends DomainError {
-  constructor(authKind: string, providerId?: string) {
+  /**
+   * `expected` is the set the caller accepts, so the message names what is storable or what the
+   * provider takes. Since spec 005 `api_key` is one of the storable kinds: a refusal here means this
+   * provider does not take the kind the caller sent, never that the kind cannot be stored at all.
+   */
+  constructor(authKind: string, expected: readonly string[], providerId?: string) {
     super(
       'auth_kind_unsupported',
       providerId === undefined
-        ? `auth kind is not storable: ${authKind}`
-        : `provider does not accept the auth kind of this credential: ${providerId} takes ${authKind}`,
+        ? `auth kind ${authKind} is not storable: a credential stores ${expected.join(' or ')}`
+        : `provider ${providerId} does not accept the auth kind of this credential: it accepts ${expected.join(' or ')}, not ${authKind}`,
     );
   }
 }

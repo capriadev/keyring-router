@@ -34,6 +34,29 @@ describe('createCredentialBodySchema', () => {
     assert.equal(parsed.authKind, 'api_key');
   });
 
+  it('accepts a Latin-1 secret with accents', () => {
+    const secret = 'clave-\u00e1rbol-\u00f1-9f8e7d6c';
+    const parsed = createCredentialBodySchema.parse({ ...validCredential, authKind: 'api_key', secret });
+
+    assert.equal(parsed.secret, secret);
+  });
+
+  it('refuses a secret that cannot travel in an HTTP header, naming the cause without echoing it', () => {
+    const secret = 'sk-\u4e2d\u6587-9f8e7d6c';
+    const result = createCredentialBodySchema.safeParse({ ...validCredential, authKind: 'api_key', secret });
+
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error?.issues.map((issue) => issue.path.join('.')), ['secret']);
+    assert.deepEqual(
+      result.error?.issues.map((issue) => issue.message),
+      [
+        'secret must be Latin-1 text: the character at index 3 (U+4E2D) cannot travel in an HTTP header, so it could never reach the provider',
+      ],
+    );
+    assert.equal(JSON.stringify(result).includes(secret), false);
+    assert.equal(JSON.stringify(result).includes('\u4e2d'), false);
+  });
+
   it('refuses a secret below the storable minimum without echoing it', () => {
     const secret = 'short';
     const result = createCredentialBodySchema.safeParse({ ...validCredential, authKind: 'api_key', secret });
@@ -62,6 +85,15 @@ describe('rotateSecretBodySchema', () => {
     assert.equal(rotateSecretBodySchema.safeParse({ secret: '' }).success, false);
     assert.equal(rotateSecretBodySchema.safeParse({ secret: 'short' }).success, false);
     assert.equal(rotateSecretBodySchema.safeParse({}).success, false);
+  });
+
+  it('refuses a rotation onto a secret that cannot travel in an HTTP header', () => {
+    const secret = 'sk-\u4e2d\u6587-9f8e7d6c';
+    const result = rotateSecretBodySchema.safeParse({ secret });
+
+    assert.equal(result.success, false);
+    assert.match(result.error?.issues[0]?.message ?? '', /^secret must be Latin-1 text/);
+    assert.equal(JSON.stringify(result).includes(secret), false);
   });
 });
 
@@ -120,5 +152,23 @@ describe('ZodValidationPipe', () => {
 
   it('refuses a missing body', () => {
     assert.throws(() => new ZodValidationPipe(createCredentialBodySchema).transform(undefined, body), InvalidBodyError);
+  });
+
+  it('names the cause of a header unsafe secret in the rejected request', () => {
+    const pipe = new ZodValidationPipe(createCredentialBodySchema);
+    const secret = 'sk-\u4e2d\u6587-9f8e7d6c';
+
+    assert.throws(
+      () => pipe.transform({ ...validCredential, authKind: 'api_key', secret }, body),
+      (error: unknown) => {
+        assert.ok(error instanceof InvalidBodyError);
+        assert.match(
+          error.message,
+          /^invalid request: secret: secret must be Latin-1 text: the character at index 3 \(U\+4E2D\) cannot travel in an HTTP header, so it could never reach the provider$/,
+        );
+        assert.equal(error.message.includes(secret), false);
+        return true;
+      },
+    );
   });
 });

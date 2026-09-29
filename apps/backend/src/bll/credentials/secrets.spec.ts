@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import type { StoredSecret } from '../../types/credential.js';
 import { OTHER_PEPPER, randomSalt, randomSecret, testKeySource } from '../../dal/testing/secret-fixtures.js';
 import { InvalidInputError, SecretKeyUnavailableError, SecretUndecryptableError } from '../errors.js';
-import { nextSecretVersion, openSecret, requireSecretKey, sealSecret, secretHint } from './secrets.js';
+import { assertSecretTravelsInHeader, headerUnsafeSecretProblem, nextSecretVersion, openSecret, requireSecretKey, sealSecret, secretHint } from './secrets.js';
 
 function key(pepper?: string): Buffer {
   return requireSecretKey(testKeySource(() => randomSalt(), pepper));
@@ -147,5 +147,68 @@ describe('assertSecretValue through sealSecret', () => {
     for (const value of ['', '   ', ' short ', ` ${randomSecret()}`, `${randomSecret()} `, 'abc', randomSecret(5000)]) {
       assert.throws(() => sealSecret(source, value, 1), InvalidInputError);
     }
+  });
+});
+
+describe('headerUnsafeSecretProblem', () => {
+  it('accepts a secret that stays inside Latin-1', () => {
+    assert.equal(headerUnsafeSecretProblem('sk-proj-0123456789abcdefghijklmnopqrstuvwxyz'), null);
+    assert.equal(headerUnsafeSecretProblem('clave-\u00e1rbol-\u00f1-9f8e7d6c'), null);
+    assert.equal(headerUnsafeSecretProblem('fran\u00e7ais-\u00e5\u00e4\u00f6-12345678'), null);
+  });
+
+  it('names the character outside Latin-1 that cannot travel in a header', () => {
+    const secret = 'sk-\u4e2d\u6587-9f8e7d6c';
+    const problem = headerUnsafeSecretProblem(secret);
+
+    assert.equal(
+      problem,
+      'secret must be Latin-1 text: the character at index 3 (U+4E2D) cannot travel in an HTTP header, so it could never reach the provider',
+    );
+    assert.equal(problem?.includes(secret), false);
+    assert.equal(problem?.includes('\u4e2d'), false);
+  });
+
+  it('counts indexes in code points, so an astral character is reported once', () => {
+    const problem = headerUnsafeSecretProblem('sk-\ud83d\udd11-9f8e7d6c');
+
+    assert.equal(
+      problem,
+      'secret must be Latin-1 text: the character at index 3 (U+1F511) cannot travel in an HTTP header, so it could never reach the provider',
+    );
+  });
+
+  it('refuses the characters that would break the header framing', () => {
+    for (const value of [`${'a'.repeat(8)}\n`, `\r${'a'.repeat(8)}`, `${'a'.repeat(4)}\u0000${'a'.repeat(4)}`]) {
+      const problem = headerUnsafeSecretProblem(value) ?? '';
+
+      assert.match(problem, /must not carry a line break or a null character/);
+      assert.match(problem, /cannot travel in an HTTP header/);
+    }
+  });
+
+  it('still round trips a secret the boundary refuses: the rule is not the cipher', () => {
+    const source = key();
+    const secret = 'sk-\u4e2d\u6587-\ud83d\udd11-9f8e7d6c';
+    const stored = sealSecret(source, secret, 1);
+
+    assert.equal(openSecret(source, stored), secret);
+    assert.notEqual(headerUnsafeSecretProblem(secret), null);
+  });
+});
+
+describe('assertSecretTravelsInHeader', () => {
+  it('raises the same message as a domain failure', () => {
+    assert.doesNotThrow(() => assertSecretTravelsInHeader('clave-\u00e1rbol-\u00f1-9f8e7d6c'));
+    assert.throws(
+      () => assertSecretTravelsInHeader('sk-\u4e2d\u6587-9f8e7d6c'),
+      (error: unknown) => {
+        assert.ok(error instanceof InvalidInputError);
+        assert.equal(error.code, 'invalid_input');
+        assert.match(error.message, /must be Latin-1 text/);
+        assert.match(error.message, /U\+4E2D/);
+        return true;
+      },
+    );
   });
 });

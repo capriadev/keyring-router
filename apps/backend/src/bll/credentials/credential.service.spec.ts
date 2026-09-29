@@ -7,7 +7,7 @@ import { CREDENTIAL_SECRET_SALT_ID, InstallKeysRepository } from '../../dal/repo
 import { createTestDatabase, type TestDatabase } from '../../dal/testing/test-database.js';
 import { OTHER_PEPPER, randomSalt, randomSecret, testKeySource } from '../../dal/testing/secret-fixtures.js';
 import type { CredentialInput, StoredSecret } from '../../types/credential.js';
-import { ProviderFailure, type ProviderAdapter, type ProviderId } from '../../types/provider.js';
+import { ProviderFailure, type AuthKind, type ProviderAdapter, type ProviderId } from '../../types/provider.js';
 import {
   AuthKindUnsupportedError,
   CredentialNotFoundError,
@@ -117,9 +117,31 @@ describe('CredentialService', () => {
 
     assert.throws(
       () => service.create(buildInput({ authKind: 'api_key', secret: randomSecret() })),
-      AuthKindUnsupportedError,
+      (error: unknown) => {
+        assert.ok(error instanceof AuthKindUnsupportedError);
+        assert.equal(error.code, 'auth_kind_unsupported');
+        // The message names what the provider accepts and never claims it takes the refused kind.
+        assert.equal(
+          error.message,
+          'provider ollama does not accept the auth kind of this credential: it accepts none, not api_key',
+        );
+        return true;
+      },
     );
     assert.deepEqual(service.list(), []);
+  });
+
+  it('states what is storable when the auth kind itself cannot be stored', () => {
+    const service = buildService();
+
+    assert.throws(
+      () => service.create(buildInput({ authKind: 'oauth' as AuthKind })),
+      (error: unknown) => {
+        assert.ok(error instanceof AuthKindUnsupportedError);
+        assert.equal(error.message, 'auth kind oauth is not storable: a credential stores none or api_key');
+        return true;
+      },
+    );
   });
 
   it('rejects a secret instead of dropping it', () => {
@@ -220,6 +242,60 @@ describe('CredentialService', () => {
     for (const secret of ['short', 'x'.repeat(4097), ` ${randomSecret()}`, `${randomSecret()} `]) {
       assert.throws(() => service.create(buildInput({ authKind: 'api_key', secret })), InvalidInputError);
     }
+  });
+
+  it('refuses a secret that cannot travel in an HTTP header, naming the cause and storing nothing', () => {
+    const service = buildService({}, createApiKeyAdapter());
+    const secret = 'sk-\u4e2d\u6587-9f8e7d6c';
+
+    assert.throws(
+      () => service.create(buildInput({ authKind: 'api_key', secret })),
+      (error: unknown) => {
+        assert.ok(error instanceof InvalidInputError);
+        assert.equal(error.code, 'invalid_input');
+        assert.equal(
+          error.message,
+          'secret must be Latin-1 text: the character at index 3 (U+4E2D) cannot travel in an HTTP header, so it could never reach the provider',
+        );
+        assert.equal(error.message.includes(secret), false);
+        return true;
+      },
+    );
+    assert.deepEqual(service.list(), []);
+  });
+
+  it('accepts a Latin-1 secret with accents and sends it verbatim', async () => {
+    const secret = 'clave-\u00e1rbol-\u00f1-9f8e7d6c';
+    const seen: (string | undefined)[] = [];
+    const service = buildService(
+      {},
+      createApiKeyAdapter({
+        validateCredential: async (target) => {
+          seen.push(target.secret);
+
+          return { ok: true, detail: 'authorized', validatedAt: 1700 };
+        },
+      }),
+    );
+    const credential = service.create(buildInput({ authKind: 'api_key', secret }));
+
+    await service.validate(credential.id);
+
+    assert.deepEqual(seen, [secret]);
+  });
+
+  it('refuses to rotate onto a header unsafe secret and keeps the stored one', () => {
+    const service = buildService({}, createApiKeyAdapter());
+    const secret = randomSecret();
+    const credential = service.create(buildInput({ authKind: 'api_key', secret }));
+    const before = credentials.readStoredSecret(credential.id) as StoredSecret;
+
+    assert.throws(() => service.rotateSecret(credential.id, 'sk-\u4e2d\u6587-9f8e7d6c'), InvalidInputError);
+
+    const after = credentials.readStoredSecret(credential.id) as StoredSecret;
+
+    assert.deepEqual(after, before);
+    assert.equal(openSecret(secretKey(), after), secret);
   });
 
   it('rotates the secret transactionally, keeps the hint stable and retires the old ciphertext', () => {
