@@ -9,3 +9,4 @@ Router for evaluated-and-abandoned decisions (pre or post implementation). Add a
 # web-cookie-mitm-and-cli-spoofing - browser sessions, MITM and CLI impersonation rejected as provider access
 # node-sqlite-and-native-argon2 - prerelease driver and native argon2 rejected in favor of stable driver and node:crypto
 # one-adapter-file-per-provider - 140 near identical adapters rejected in favor of one adapter per protocol
+# windows-service-wrapper - NSSM and Task Scheduler rejected in favor of the npm wrapper that ships winsw

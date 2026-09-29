@@ -15,8 +15,8 @@ A self-hosted local gateway that a user installs on Windows, that starts on its 
 | M3 | Credential secrets encrypted at rest, so `api_key` providers become usable | 005 | done |
 | M4 | Own API: OpenAI compatible facade with protocol translation | 003 | done |
 | M5 | `kr` CLI: serve, service install, credential and policy commands | 006 | done |
-| M6 | Windows startup service | 007 | next |
-| M7 | Routing: rotation, fallback, quota and lockout | 004 | pending |
+| M6 | Windows startup service | 007 | done (install pending on the user machine) |
+| M7 | Routing: rotation, fallback, quota and lockout | 004 | next |
 | M8 | Shared API contracts: one source for the wire shapes the UI and the API share | 010 | pending |
 | M9 | UI: minimalist, micro detailed, complete flow | 008 | pending |
 | M10 | Live provider discovery for the 42 catalogued providers that declare no static models | 011 | pending |

@@ -52,4 +52,6 @@ Out of scope: Linux systemd or macOS launchd, remote management, and auto update
 
 ## Status
 
-pending
+completed on 2026-09-29, with one criterion pending on the user's machine.
+
+Evidence: the spike kept in `temp/service-spike/` (node-windows 1.0.0-beta.8 installs without compiling and ships `bin/winsw/winsw.exe`), the service definition and its tests in `apps/cli/src/service/`, and `kr service` in `apps/cli/src/commands/service.ts`. The criterion that needs the user is the restart of the machine: creating and removing a real Windows service changes this machine, so the command only runs when they ask for it.
