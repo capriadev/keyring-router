@@ -40,7 +40,7 @@ describe('runMigrations', () => {
 
     const migrated = createDatabase(path);
 
-    assert.deepEqual(tableNames(migrated), ['__drizzle_migrations', 'catalog_models', 'credentials', 'policies']);
+    assert.deepEqual(tableNames(migrated), ['__drizzle_migrations', 'catalog_models', 'credentials', 'install_keys', 'policies']);
     migrated.$client.close();
   });
 
@@ -52,7 +52,7 @@ describe('runMigrations', () => {
 
     const migrated = createDatabase(path);
 
-    assert.equal(appliedMigrations(migrated), 1);
+    assert.equal(appliedMigrations(migrated), 2);
     migrated.$client.close();
   });
 });

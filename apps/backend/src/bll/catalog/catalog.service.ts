@@ -1,11 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { SECRET_KEY_SOURCE, type SecretKeySource } from '../../config/secret-key-source.js';
 import { CatalogRepository } from '../../dal/repositories/catalog.repository.js';
 import { CredentialsRepository } from '../../dal/repositories/credentials.repository.js';
 import { PoliciesRepository } from '../../dal/repositories/policies.repository.js';
 import { toNamespacedModelId, type CatalogModel, type CatalogRefreshResult, type ExposedModel } from '../../types/catalog.js';
-import { ProviderFailure, type DiscoveredModelRecord } from '../../types/provider.js';
+import { ProviderFailure, type AdapterTarget, type DiscoveredModelRecord } from '../../types/provider.js';
 import { CredentialNotFoundError } from '../errors.js';
-import { toAdapterTarget } from '../credentials/credential.service.js';
+import { adapterTargetFor } from '../credentials/adapter-target.js';
+import { redact } from '../credentials/redaction.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
 import { evaluateExposure } from './policy.js';
 
@@ -16,6 +18,7 @@ export class CatalogService {
     @Inject(CatalogRepository) private readonly catalog: CatalogRepository,
     @Inject(PoliciesRepository) private readonly policies: PoliciesRepository,
     @Inject(ProviderRegistry) private readonly registry: ProviderRegistry,
+    @Inject(SECRET_KEY_SOURCE) private readonly keySource: SecretKeySource,
   ) {}
 
   /** Discovery replaces the derived rows of the credential; a provider failure keeps them. */
@@ -26,13 +29,16 @@ export class CatalogService {
       throw new CredentialNotFoundError(credentialId);
     }
 
+    const target: AdapterTarget = adapterTargetFor(credential, this.credentials, this.keySource);
+
     let discovered: DiscoveredModelRecord[];
 
     try {
-      discovered = await this.registry.get(credential.providerId).discoverCatalog(toAdapterTarget(credential));
+      discovered = await this.registry.get(credential.providerId).discoverCatalog(target);
     } catch (error) {
       if (error instanceof ProviderFailure) {
-        this.credentials.markRefreshFailed(credentialId, error.message);
+        // Stored and served back through GET /api/credentials, so it passes the redaction module.
+        this.credentials.markRefreshFailed(credentialId, redact(error.message));
       }
 
       throw error;

@@ -1,5 +1,6 @@
 import { Catch, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
+import { redact } from '../bll/credentials/redaction.js';
 import type { ApiErrorBody } from '../types/api.js';
 import { resolveApiError } from './api-errors.js';
 
@@ -12,8 +13,10 @@ export class ApiErrorFilter implements ExceptionFilter {
     const error = resolveApiError(exception);
 
     if (error.code === 'internal_error') {
-      // Name only: a message could carry transport or provider details.
-      this.logger.error(`unhandled error: ${exception instanceof Error ? exception.name : typeof exception}`);
+      // Name only, redacted: a message could carry transport or provider details.
+      const detail = exception instanceof Error ? exception.name : typeof exception;
+
+      this.logger.error(redact(`unhandled error: ${detail}`));
     }
 
     const body: ApiErrorBody = { error: { code: error.code, message: error.message } };

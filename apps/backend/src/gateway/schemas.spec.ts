@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ArgumentMetadata } from '@nestjs/common';
+import { randomSecret } from '../dal/testing/secret-fixtures.js';
 import { InvalidBodyError } from './api-errors.js';
-import { catalogQuerySchema, createCredentialBodySchema, createPolicyBodySchema, idParamsSchema } from './schemas.js';
+import {
+  catalogQuerySchema,
+  createCredentialBodySchema,
+  createPolicyBodySchema,
+  idParamsSchema,
+  rotateSecretBodySchema,
+} from './schemas.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
 const body: ArgumentMetadata = { type: 'body' };
@@ -19,13 +26,42 @@ describe('createCredentialBodySchema', () => {
     assert.deepEqual(createCredentialBodySchema.parse(validCredential), validCredential);
   });
 
-  it('refuses a secret instead of dropping it', () => {
-    assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, secret: 'plain-text-value' }).success, false);
+  it('accepts an api_key credential carrying a secret', () => {
+    const secret = randomSecret();
+    const parsed = createCredentialBodySchema.parse({ ...validCredential, authKind: 'api_key', secret });
+
+    assert.equal(parsed.secret, secret);
+    assert.equal(parsed.authKind, 'api_key');
   });
 
-  it('refuses an unknown provider or auth kind', () => {
-    assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, providerId: 'gemini' }).success, false);
+  it('refuses a secret below the storable minimum without echoing it', () => {
+    const secret = 'short';
+    const result = createCredentialBodySchema.safeParse({ ...validCredential, authKind: 'api_key', secret });
+
+    assert.equal(result.success, false);
+    assert.equal(JSON.stringify(result).includes(secret), false);
+  });
+
+  it('refuses a provider id that is not a plausible id, and leaves existence to bll', () => {
+    // The catalog is data: the boundary checks the shape, `ProviderRegistry` decides if it exists.
+    assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, providerId: '' }).success, false);
+    assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, providerId: 'a'.repeat(65) }).success, false);
+    assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, providerId: 'agnes' }).success, true);
+  });
+
+  it('refuses an unknown auth kind', () => {
     assert.equal(createCredentialBodySchema.safeParse({ ...validCredential, authKind: 'oauth' }).success, false);
+  });
+});
+
+describe('rotateSecretBodySchema', () => {
+  it('accepts a new secret and refuses a blank or short one', () => {
+    const secret = randomSecret();
+
+    assert.deepEqual(rotateSecretBodySchema.parse({ secret }), { secret });
+    assert.equal(rotateSecretBodySchema.safeParse({ secret: '' }).success, false);
+    assert.equal(rotateSecretBodySchema.safeParse({ secret: 'short' }).success, false);
+    assert.equal(rotateSecretBodySchema.safeParse({}).success, false);
   });
 });
 
@@ -72,11 +108,11 @@ describe('ZodValidationPipe', () => {
     const pipe = new ZodValidationPipe(createCredentialBodySchema);
 
     assert.throws(
-      () => pipe.transform({ ...validCredential, secret: 'plain-text-value' }, body),
+      () => pipe.transform({ ...validCredential, authKind: 'api_key', secret: 'corta' }, body),
       (error: unknown) => {
         assert.ok(error instanceof InvalidBodyError);
         assert.match(error.message, /secret/);
-        assert.equal(error.message.includes('plain-text-value'), false);
+        assert.equal(error.message.includes('corta'), false);
         return true;
       },
     );

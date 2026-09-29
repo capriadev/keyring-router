@@ -11,6 +11,9 @@ const STATUS_PER_CODE: Record<DomainErrorCode, number> = {
   auth_kind_unsupported: 422,
   unsupported_provider: 400,
   credential_not_found: 404,
+  secret_not_found: 409,
+  secret_undecryptable: 422,
+  secret_key_unavailable: 422,
   policy_not_found: 404,
   invalid_policy_rule: 400,
 };

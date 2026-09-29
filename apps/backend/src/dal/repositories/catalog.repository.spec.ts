@@ -12,6 +12,7 @@ function buildCredential(id: string, namespace: string): Credential {
     providerId: 'ollama',
     baseUrl: 'http://127.0.0.1:11434',
     authKind: 'none',
+    secretHint: null,
     lastValidatedAt: null,
     lastRefreshAt: null,
     lastRefreshError: null,

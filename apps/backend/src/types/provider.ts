@@ -1,18 +1,21 @@
-export const PROVIDER_IDS = ['ollama'] as const;
+/**
+ * A provider id: `ollama` for the protocol that is also its own provider, otherwise the id of a
+ * catalog entry. Catalog entries are data, so this is not an enum: `ProviderRegistry` is the single
+ * place that decides whether an id exists, and an unknown one fails as `UnsupportedProviderError`.
+ */
+export type ProviderId = string;
 
-export type ProviderId = (typeof PROVIDER_IDS)[number];
-
-/** How a credential authenticates against its provider. `api_key` is not storable until the security spec lands. */
+/** How a credential authenticates against its provider. */
 export type AuthKind = 'none' | 'api_key';
 
-/** Auth kinds that may be persisted today. */
-export const STORABLE_AUTH_KINDS: readonly AuthKind[] = ['none'];
+/** Auth kinds a credential may be persisted with. A provider still has to accept the one it is given. */
+export const STORABLE_AUTH_KINDS: readonly AuthKind[] = ['none', 'api_key'];
 
 /** Everything an adapter needs to reach one credential. `secret` is absent for `authKind: 'none'`. */
 export interface AdapterTarget {
   readonly baseUrl: string;
   readonly authKind: AuthKind;
-  readonly secret?: string;
+  secret?: string;
 }
 
 export type ProviderErrorKind = 'unreachable' | 'unauthorized' | 'invalid_response' | 'unknown';

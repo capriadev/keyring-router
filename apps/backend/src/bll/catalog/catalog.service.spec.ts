@@ -4,6 +4,7 @@ import { CatalogRepository } from '../../dal/repositories/catalog.repository.js'
 import { CredentialsRepository } from '../../dal/repositories/credentials.repository.js';
 import { PoliciesRepository } from '../../dal/repositories/policies.repository.js';
 import { createTestDatabase, type TestDatabase } from '../../dal/testing/test-database.js';
+import { randomSalt, testKeySource } from '../../dal/testing/secret-fixtures.js';
 import type { Credential } from '../../types/credential.js';
 import { ProviderFailure, type DiscoveredModelRecord } from '../../types/provider.js';
 import { CredentialNotFoundError } from '../errors.js';
@@ -38,6 +39,7 @@ describe('CatalogService', () => {
     credentials = new CredentialsRepository(database.db);
     catalog = new CatalogRepository(database.db);
     const policies = new PoliciesRepository(database.db);
+    const keySource = testKeySource(randomSalt);
     discovered = [];
     failure = null;
 
@@ -53,9 +55,9 @@ describe('CatalogService', () => {
       }),
     ]);
 
-    service = new CatalogService(credentials, catalog, policies, registry);
+    service = new CatalogService(credentials, catalog, policies, registry, keySource);
     policyService = new PolicyService(policies, credentials);
-    credential = new CredentialService(credentials, registry).create({
+    credential = new CredentialService(credentials, registry, keySource).create({
       namespace: 'local',
       providerId: 'ollama',
       baseUrl: 'http://127.0.0.1:11434',
@@ -153,7 +155,7 @@ describe('CatalogService', () => {
   });
 
   it('filters the catalog by credential', async () => {
-    const other = new CredentialService(credentials, new ProviderRegistry([createFakeAdapter()])).create({
+    const other = new CredentialService(credentials, new ProviderRegistry([createFakeAdapter()]), testKeySource(randomSalt)).create({
       namespace: 'work',
       providerId: 'ollama',
       baseUrl: 'http://127.0.0.1:11435',

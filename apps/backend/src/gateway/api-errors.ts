@@ -1,5 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import { DomainError, type DomainErrorCode } from '../bll/errors.js';
+import { redact } from '../bll/credentials/redaction.js';
 import { ProviderFailure } from '../types/provider.js';
 
 export type ApiErrorCode =
@@ -19,6 +20,9 @@ const DOMAIN_ERROR_STATUS: Record<DomainErrorCode, number> = {
   auth_kind_unsupported: 422,
   unsupported_provider: 400,
   credential_not_found: 404,
+  secret_not_found: 409,
+  secret_undecryptable: 422,
+  secret_key_unavailable: 422,
   policy_not_found: 404,
   invalid_policy_rule: 400,
 };
@@ -37,22 +41,25 @@ export interface ResolvedApiError {
   readonly message: string;
 }
 
-/** Maps any thrown value to the body every non-2xx response uses. */
+/**
+ * Maps any thrown value to the body every non-2xx response uses. Every message leaves through the
+ * redaction module, so a value that reached a message by accident still never reaches a client.
+ */
 export function resolveApiError(exception: unknown): ResolvedApiError {
   if (exception instanceof DomainError) {
     return {
       status: DOMAIN_ERROR_STATUS[exception.code],
       code: exception.code,
-      message: exception.message,
+      message: redact(exception.message),
     };
   }
 
   if (exception instanceof ProviderFailure) {
-    return { status: 502, code: 'provider_failure', message: exception.message };
+    return { status: 502, code: 'provider_failure', message: redact(exception.message) };
   }
 
   if (exception instanceof InvalidBodyError) {
-    return { status: 400, code: 'invalid_body', message: exception.message };
+    return { status: 400, code: 'invalid_body', message: redact(exception.message) };
   }
 
   if (exception instanceof HttpException) {

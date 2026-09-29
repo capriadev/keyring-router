@@ -1,15 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { SECRET_KEY_SOURCE, type SecretKeySource } from '../../config/secret-key-source.js';
 import { CredentialsRepository } from '../../dal/repositories/credentials.repository.js';
-import { NAMESPACE_PATTERN, type Credential, type CredentialInput } from '../../types/credential.js';
+import { NAMESPACE_PATTERN, type Credential, type CredentialInput, type StoredSecret } from '../../types/credential.js';
 import { STORABLE_AUTH_KINDS, type AdapterTarget, type ValidationResult } from '../../types/provider.js';
 import { AuthKindUnsupportedError, CredentialNotFoundError, InvalidInputError, NamespaceTakenError } from '../errors.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
-
-/** No storable auth kind carries a secret yet, so the target never holds one. */
-export function toAdapterTarget(credential: Credential): AdapterTarget {
-  return { baseUrl: credential.baseUrl, authKind: credential.authKind };
-}
+import { adapterTargetFor } from './adapter-target.js';
+import { nextSecretVersion, requireSecretKey, sealSecret } from './secrets.js';
 
 /** Rejects anything the adapter could not use and stores the URL without a trailing slash. */
 function normalizeBaseUrl(raw: string): string {
@@ -37,6 +35,7 @@ export class CredentialService {
   constructor(
     @Inject(CredentialsRepository) private readonly credentials: CredentialsRepository,
     @Inject(ProviderRegistry) private readonly registry: ProviderRegistry,
+    @Inject(SECRET_KEY_SOURCE) private readonly keySource: SecretKeySource,
   ) {}
 
   create(input: CredentialInput): Credential {
@@ -48,35 +47,88 @@ export class CredentialService {
       throw new AuthKindUnsupportedError(input.authKind);
     }
 
-    if (input.secret !== undefined) {
-      throw new InvalidInputError('this slice stores no secret: authKind none takes no credentials');
-    }
-
     if (this.credentials.findByNamespace(input.namespace) !== undefined) {
       throw new NamespaceTakenError(input.namespace);
     }
 
-    this.registry.get(input.providerId);
+    const adapter = this.registry.get(input.providerId);
 
-    const credential: Credential = {
+    if (!adapter.authKinds.includes(input.authKind)) {
+      throw new AuthKindUnsupportedError(input.authKind, input.providerId);
+    }
+
+    // Refused instead of dropped in either direction: a secret for `none` is a mistake, and `api_key`
+    // without one would store a credential that can never authenticate.
+    if (input.authKind === 'none' && input.secret !== undefined) {
+      throw new InvalidInputError('authKind none takes no secret');
+    }
+
+    if (input.authKind === 'api_key' && input.secret === undefined) {
+      throw new InvalidInputError('authKind api_key requires a secret');
+    }
+
+    const persisted: Credential = {
       id: randomUUID(),
       namespace: input.namespace,
       providerId: input.providerId,
       baseUrl: normalizeBaseUrl(input.baseUrl),
       authKind: input.authKind,
+      secretHint: null,
       lastValidatedAt: null,
       lastRefreshAt: null,
       lastRefreshError: null,
       createdAt: Date.now(),
     };
 
-    this.credentials.insert(credential);
+    const secret: StoredSecret | null =
+      input.secret === undefined
+        ? null
+        : sealSecret(requireSecretKey(this.keySource), input.secret, nextSecretVersion(null));
 
-    return credential;
+    if (secret === null) {
+      // One INSERT: a credential row never lands without its secret, and never half of one.
+      this.credentials.insert(persisted);
+
+      return persisted;
+    }
+
+    const stored: Credential = { ...persisted, secretHint: secret.secretHint };
+
+    this.credentials.insert(stored, secret);
+
+    return stored;
   }
 
   list(): Credential[] {
     return this.credentials.list();
+  }
+
+  /**
+   * Replaces the encrypted secret of a credential. The new ciphertext, IV, tag, version and hint
+   * land in a single UPDATE, so a failure between them is impossible; the previous ciphertext is
+   * gone, and a stale copy of it stops matching the stored version.
+   */
+  rotateSecret(id: string, secret: string): Credential {
+    const credential = this.credentials.findById(id);
+
+    if (credential === undefined) {
+      throw new CredentialNotFoundError(id);
+    }
+
+    if (credential.authKind === 'none') {
+      throw new InvalidInputError('authKind none stores no secret: rotate a credential that has one');
+    }
+
+    const previous = this.credentials.readStoredSecret(id);
+    const stored = sealSecret(
+      requireSecretKey(this.keySource),
+      secret,
+      nextSecretVersion(previous?.secretVersion ?? null),
+    );
+
+    this.credentials.replaceSecret(id, stored);
+
+    return { ...credential, secretHint: stored.secretHint };
   }
 
   async validate(id: string): Promise<ValidationResult> {
@@ -86,7 +138,8 @@ export class CredentialService {
       throw new CredentialNotFoundError(id);
     }
 
-    const result = await this.registry.get(credential.providerId).validateCredential(toAdapterTarget(credential));
+    const target: AdapterTarget = adapterTargetFor(credential, this.credentials, this.keySource);
+    const result = await this.registry.get(credential.providerId).validateCredential(target);
 
     if (result.ok) {
       this.credentials.markValidated(id, result.validatedAt);
