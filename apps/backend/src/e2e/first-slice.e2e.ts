@@ -6,6 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { rmSync } from 'node:fs';
 import {
   Checks,
   call,
@@ -232,6 +233,9 @@ await checks.run('a broken provider answers 502 and stores a secret free error',
 await gateway.close();
 await stub.close();
 await guarded.close();
+
+// The run owns its database: leaving it behind would pile up files in the OS temp folder.
+rmSync(databasePath, { force: true });
 
 process.exit(checks.report() === 0 ? 0 : 1);
 

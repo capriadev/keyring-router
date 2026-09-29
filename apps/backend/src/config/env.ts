@@ -6,7 +6,7 @@ export const DEFAULT_HOST = '127.0.0.1';
 export const DEFAULT_PORT = 4310;
 export const DEFAULT_DB_PATH = 'apps/backend/data/kr.db';
 
-/** Boot configuration. This slice stores no secret in the environment. */
+/** Boot configuration. The credential pepper lives beside it, in `secrets.env.ts`. */
 export interface AppEnv {
   readonly host: string;
   readonly port: number;
