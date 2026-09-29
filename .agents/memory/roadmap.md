@@ -19,6 +19,7 @@ A self-hosted local gateway that a user installs on Windows, that starts on its 
 | M7 | Windows startup service | 007 | pending |
 | M8 | Shared API contracts: one source for the wire shapes the UI and the API share | 010 | pending |
 | M9 | UI: minimalist, micro detailed, complete flow | 008 | pending |
+| M10 | Live provider discovery for the 42 catalogued providers that declare no static models | 011 | pending |
 
 ## Critical path
 
