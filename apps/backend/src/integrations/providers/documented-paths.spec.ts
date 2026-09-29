@@ -23,8 +23,11 @@ describe('DOCUMENTED_PATHS', () => {
   it('documents the path every catalog entry of that format already ends with', () => {
     for (const entry of CATALOG) {
       const paths = DOCUMENTED_PATHS[entry.format];
-      // A format that names a chat endpoint is what every entry of that format ends with.
-      const resource = paths.chat ?? paths.models;
+      // A format that names a chat endpoint is what every entry of that format ends with, except when
+      // that chat path carries the model id: a template cannot be the literal suffix of a stored URL, so
+      // such a format is checked against its model collection, the root its model named chat hangs from.
+      const resource =
+        paths.chat?.includes('{model}') === true ? paths.models : (paths.chat ?? paths.models);
       const pathname = new URL(entry.baseUrl).pathname;
 
       assert.ok(pathname.endsWith(resource), `${entry.id} does not end with ${resource}`);
