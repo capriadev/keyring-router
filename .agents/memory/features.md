@@ -9,4 +9,7 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 -->
 
 #2 Provider catalog with hybrid adapters - adapt the OmniRoute MIT provider registry into the KR contract, one adapter per protocol [spec: 002-provider-catalog.md] [status: active]
+#3 OpenAI compatible facade - expose /v1/models, /v1/chat/completions and /v1/messages with protocol translation [spec: 003-openai-facade.md] [status: pending]
+#4 Routing - choose among credentials by priority, lockout, quota and fallback chain [spec: 004-routing.md] [status: pending]
+#6 kr CLI - run and manage the gateway from one command, as a thin client of the local API [spec: 006-cli.md] [status: pending]
 #5 Encrypted credential secrets - store an api_key encrypted at rest with AES-256-GCM so the cloud providers become usable [spec: 005-credential-secrets.md] [status: pending]
