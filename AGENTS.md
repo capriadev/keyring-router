@@ -11,6 +11,7 @@ This file is an index, entry point, and project methodology. It does not contain
 | `.agents/memory/MEMORY.md` | Dynamic state between sessions: what's open, what's next | On entry and at session close |
 | `.agents/memory/architecture.md` | Product boundaries, planned stack and module responsibilities | Before changing architecture, integrations or persistence |
 | `.agents/memory/features.md` | SDD index (`last_id` + `#N`) and specs | Before implementing any feature |
+| `.agents/memory/roadmap.md` | Goals, milestones and the critical path | When planning the next work or deciding what comes after the current spec |
 | `.agents/memory/errors/` | Resolved conflict stories (router `_INDEX.md`) | When a known problem appears |
 | `.agents/memory/discarded/` | Evaluated-and-abandoned decisions (router `_INDEX.md`) | When considering re-attempting something, or before committing to a similar approach |
 | `.agents/memory/specs/` | Active specs | Before writing code |
