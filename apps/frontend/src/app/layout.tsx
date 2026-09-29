@@ -3,14 +3,14 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Keyring Router',
-  description: 'Local control interface for Keyring Router.',
+  description: 'Interfaz local de administracion de Keyring Router.',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body>{children}</body>
     </html>
   );

@@ -1,7 +1,53 @@
 :root {
+  /* color: surfaces and content */
   --color-surface: #101214;
+  --color-surface-raised: #171a1d;
+  --color-surface-inset: #0b0d0e;
   --color-content: #f2f4f5;
   --color-muted: #a7afb5;
+  --color-border: #2a2f34;
+  --color-border-strong: #3a4147;
+
+  /* color: accent and state */
   --color-accent: #b6f36b;
+  --color-accent-strong: #c9f78f;
+  --color-accent-content: #101214;
+  --color-ok: #6bd48a;
+  --color-warning: #e8c56a;
+  --color-danger: #f2938f;
+
+  /* typography */
   --font-body: Arial, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.9375rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-strong: 600;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --letter-spacing-wide: 0.02em;
+
+  /* spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+
+  /* borders */
+  --border-width-thin: 1px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  /* layout */
+  --layout-max-width: 68rem;
+  --layout-column-min: 22rem;
+  --layout-prose-width: 32rem;
 }
+
