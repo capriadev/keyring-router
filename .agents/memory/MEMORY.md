@@ -1,25 +1,22 @@
 # Memory - Keyring Router (dynamic, session-to-session)
 
-Update at end of session / significant checkpoint. Prune what's stale - this is not a changelog, it's working state.
+Update at session close. This is not a changelog: it is the state of the work.
 
-<!-- Pruning rules (respected each session):
-- No section should grow unbounded. If "Watch" has > ~5 lines, something should have been promoted to `errors/` or to a spec.
-- Never copy content from `architecture.md`, `AGENTS.md` or `PHILOSOPHY.md` - MEMORY.md doesn't duplicate sources of truth, only references by filename/spec.
-- At session close: review if anything in "Next up" got resolved (delete) or if anything in "Watch" escalated to a documented error (move, don't copy).
+<!-- Rules (agent-facing):
+- Working state only: in flight, next, blocked, open decisions, and norms with no other owner.
+- One line per item, no prose, no connectives, no history. If it is readable in git log, a PR, a spec or another bank, it does not go here.
+- Norm (true next week regardless of the work) belongs to AGENTS.md or architecture.md; state (changes as work advances) belongs here.
+- Caps: State <= 5, Next up <= 5, Open decisions <= 3. Overflow means wrong bank: move it, do not trim it.
+- Session close: delete resolved, move escalated. Never duplicate another bank.
 -->
 
 ## Last session
-- 2026-09-15: Rebased the inherited agent documentation on the Keyring Router product brief. The repository is an uncommitted architecture bootstrap; no runtime or provider integration exists yet.
+- Base remains a skeleton: no specs (`last_id: 0`), no drizzle config, no provider integration.
 
 ## Next up
-- Create the first implementation spec only after choosing the first vertical slice and resolving the affected open architecture decisions.
+- Spec 001 for the first vertical slice: credential registry, provider adapter, policy, model listing. Blocked until the first provider is decided.
+- Decide `CLAUDE.md`: restore the pointer to `AGENTS.md` or commit the deletion deliberately.
+- Local `main` is stale versus `origin/main` (PR #3 already merged remotely); refresh before any merge.
 
 ## Open decisions (unresolved, blocking or not)
-- First provider and local API compatibility target.
-- Fastify versus Hono, and Drizzle versus Prisma if persistence requires an ORM.
-- Credential encryption and OS secret-storage approach.
-
-## Watch / don't forget
-- Never use emojis or em dashes (—) in anything written for the project (docs, READMEs, commits, UI copy). Plain ASCII punctuation only.
-- Namespaces identify credentials, not merely providers. Never merge same-provider accounts.
-- Catalog availability and policy exposure are separate; both model listing and routing must enforce the policy.
+- First provider adapter and OpenAI-compatible API surface: blocks spec 001 (full catalog in `architecture.md`).

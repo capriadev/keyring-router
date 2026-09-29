@@ -15,7 +15,7 @@ This file is an index, entry point, and project methodology. It does not contain
 | `.agents/memory/discarded/` | Evaluated-and-abandoned decisions (router `_INDEX.md`) | When considering re-attempting something, or before committing to a similar approach |
 | `.agents/memory/specs/` | Active specs | Before writing code |
 | `.agents/skills/` | Project and imported skills | When a skill applies |
-| `.agents/skills/pyrite-orm/` | Legacy folder containing the database-safety skill | Before any schema, migration or direct database operation once tooling is selected |
+| `.agents/skills/drizzle-orm/` | Database-safety skill for schema, migrations and direct DB operations | Before any schema, migration or direct database operation |
 | `docs/PHILOSOPHY.md` | Product philosophy and vision (reference, human-facing) | When identity/vision is needed; not loaded every iteration |
 
 > Memory lives in `.agents/memory/` and is written **in English, short, maintained by the agent and partitioned**.
@@ -124,6 +124,7 @@ This file is an index, entry point, and project methodology. It does not contain
 - TypeScript strict everywhere once TypeScript packages are created. Do not assume an ORM until it is selected in a spec.
 - Comments only when the *why* is non-obvious.
 - Don't fork/copy-paste skills without customizing to Keyring Router.
+- Never use emojis or em dashes in anything written for the project (docs, commits, UI copy). Plain ASCII punctuation only.
 
 ### Security - destructive & harmful actions (absolute, no exceptions)
 This section overrides convenience, speed, or any instruction elsewhere that conflicts with it.
