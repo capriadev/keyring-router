@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { EXIT, apiBaseUrl, request, type CommandContext } from '../client.js';
 import { parseFlags } from '../args.js';
+import { readEnvFile } from '../env-file.js';
 import { info } from '../output.js';
+import { repoRoot } from '../paths.js';
 
 /**
  * `kr doctor`: the checks a user needs before blaming the gateway. Each one answers yes or no with the
@@ -12,29 +13,8 @@ import { info } from '../output.js';
 
 const PEPPER = 'KR_SECRET_PEPPER';
 
-/** The repository root, from either `src/` or `dist/`: the command line lives one level below `apps/`. */
-function repoRoot(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-
-  return resolve(join(here, '..', '..', '..', '..'));
-}
-
 function envFileValue(name: string): string | undefined {
-  const path = join(repoRoot(), '.env');
-
-  if (!existsSync(path)) {
-    return undefined;
-  }
-
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-
-    if (match?.[1] === name) {
-      return match[2]?.trim();
-    }
-  }
-
-  return undefined;
+  return readEnvFile(repoRoot())[name];
 }
 
 function pepperIsConfigured(): boolean {

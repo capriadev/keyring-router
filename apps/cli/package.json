@@ -13,6 +13,9 @@
     "test": "node --import tsx --test src/**/*.spec.ts",
     "kr": "node --import tsx src/index.ts"
   },
+  "dependencies": {
+    "node-windows": "^1.0.0-beta.8"
+  },
   "devDependencies": {
     "@types/node": "^26.5.1",
     "tsx": "^4.20.3",

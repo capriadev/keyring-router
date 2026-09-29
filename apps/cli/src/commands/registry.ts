@@ -4,6 +4,7 @@ import { doctorCommand } from './doctor.js';
 import { modelsCommand, providersCommand } from './models.js';
 import { policyCommand } from './policies.js';
 import { serveCommand } from './serve.js';
+import { serviceCommand } from './service.js';
 import { statusCommand, versionCommand } from './status.js';
 
 /** One command of this command line, and the one line of help that says what it is for. */
@@ -15,6 +16,7 @@ export interface Command {
 
 const COMMANDS: readonly Command[] = [
   { name: 'serve', summary: 'start the gateway in the foreground', run: serveCommand },
+  { name: 'service', summary: 'install, remove, restart or inspect the Windows service', run: serviceCommand },
   { name: 'status', summary: 'health, credentials and exposed models', run: statusCommand },
   { name: 'version', summary: 'version of the running gateway', run: versionCommand },
   { name: 'providers', summary: 'providers the catalog offers', run: providersCommand },
@@ -44,6 +46,7 @@ export function helpText(): string {
     '',
     'examples:',
     '  kr serve --port 4310',
+    '  kr service install                 (needs an elevated terminal)',
     '  kr credential add --namespace local --provider ollama --base-url http://127.0.0.1:11434',
     '  kr credential add --namespace work --provider groq --base-url https://api.groq.com/openai/v1 --auth api_key',
     '  kr policy allow "work/*"',
