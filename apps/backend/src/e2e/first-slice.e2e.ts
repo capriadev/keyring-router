@@ -310,6 +310,19 @@ await checks.run('a model the policy does not expose cannot be reached through /
   assert.equal(removed.status, 204);
 });
 
+await checks.run('an unknown provider id answers 404 instead of 400', async () => {
+  const response = await api('GET', '/api/providers/does-not-exist');
+
+  assert.equal(response.status, 404, JSON.stringify(response.body));
+  assert.equal((response.body as Json).error.code, 'unsupported_provider');
+});
+
+await checks.run('a known provider id answers its declared models', async () => {
+  const response = await api('GET', '/api/providers/ollama');
+
+  assert.equal(response.status, 200);
+});
+
 await checks.run('the kr command line drives the gateway through its own API', async () => {
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');

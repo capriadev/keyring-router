@@ -108,4 +108,21 @@ describe('DalModule boot', () => {
     assert.match(result.stderr, /1 encrypted credential secret/);
     assert.equal(result.stderr.includes('ciphertext'), false);
   });
+
+  it('releases the database when it refuses, so the file is writable right after', async () => {
+    storeSecret();
+
+    await assert.rejects(boot(), /KR_SECRET_PEPPER is missing/);
+
+    // The proof: a handle left open by the refused boot would hold the write lock for the whole life of
+    // this process, and this insert would fail with SQLITE_BUSY instead of landing.
+    const reopened = createDatabase(path);
+
+    reopened.$client
+      .prepare(
+        "insert into policies (id, credential_id, pattern, effect, created_at) values ('boot-proof', null, '*', 'allow', 1)",
+      )
+      .run();
+    reopened.$client.close();
+  });
 });

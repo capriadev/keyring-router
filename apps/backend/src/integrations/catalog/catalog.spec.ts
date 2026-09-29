@@ -84,7 +84,7 @@ describe('validateCatalogEntries', () => {
   it('rejects a credential value, a cookie and a session id in the data', () => {
     const leaks: readonly Partial<ProviderCatalogEntry>[] = [
       { displayName: `Bearer ${'a'.repeat(24)}` },
-      { authHeader: 'sk-abcdefghijklmno' },
+      { authHeader: `sk-${'a'.repeat(12)}` },
       { headers: { Cookie: 'session=abc' } },
       { headers: { Authorization: 'session-token' } },
       { headers: { 'X-Title': `Token ${'b'.repeat(24)}` } },
