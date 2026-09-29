@@ -36,10 +36,10 @@ Fix what the audit proved broken, and leave the repository claiming only what it
 
 ## Acceptance criteria
 
-- [ ] Every fixed finding has a test that fails without the fix.
-- [ ] The CLI imports the wire shapes from the package and declares none of its own.
-- [ ] Adding a code to either `ApiErrorCode` declaration fails the typecheck of the other.
-- [ ] The four workspace typechecks, the backend and command line suites, the build and the end to end run pass.
+- [x] Every fixed finding has a test that fails without the fix.
+- [x] The CLI imports the wire shapes from the package and declares none of its own.
+- [x] Adding a code to either `ApiErrorCode` declaration fails the typecheck of the other.
+- [x] The four workspace typechecks, the backend and command line suites, the build and the end to end run pass.
 - [ ] An independent audit re-reads the fixes and reports what it could not check.
 
 ## Risks
@@ -50,4 +50,10 @@ Fix what the audit proved broken, and leave the repository claiming only what it
 
 ## Status
 
-active
+fixes applied on 2026-09-29, in two commits: `a294795` (the three transport defects, with the first direct tests those two files have ever had, and the end to end harness now splitting a frame for real) and `6134c59` (the error code binding, the command line adoption, the declared dependency in the three apps). Every fixed finding carries a test, and the two that mattered most were proved red before being proved green: with the old `signal ?? budget` line restored, the transport suite fails one case and passes four, and with a code added only to the package, the backend typecheck fails on the binding assertion.
+
+Still owed, and honestly open:
+
+- The re-read by the independent lane (run dispatched after the commits). Until it lands, everything in the two commits is coordinator written and only self verified.
+- H-B7 and H-B8 stay deferred by decision: both need a contract change of their own (`ProviderErrorKind` is frozen by spec 001, and the frame handling lives outside the two files this spec audits).
+- The three unverifiable items of the first pass are unchanged: no interface running against a live API, no real provider, no CI execution.
