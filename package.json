@@ -17,6 +17,7 @@
     "start:backend": "npm run start:prod --workspace=apps/backend",
     "tsc": "npm run tsc --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "e2e": "npm run e2e --workspace apps/backend",
     "orm": "npm run orm:generate",
     "orm:generate": "cd apps/backend && drizzle-kit generate",
     "orm:migrate": "npm run db:migrate --workspace apps/backend",

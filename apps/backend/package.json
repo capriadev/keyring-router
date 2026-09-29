@@ -10,6 +10,7 @@
     "start:prod": "node dist/main.js",
     "tsc": "tsc --noEmit",
     "test": "node --import tsx --test src/**/*.spec.ts",
+    "e2e": "node --import tsx src/e2e/first-slice.e2e.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/dal/migrate.cli.ts"
   },
