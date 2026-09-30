@@ -17,7 +17,7 @@ The runtime check reads `drop.reason` once inside `KNOWN_REASONS.includes(...)` 
 
 ### F2-4 (minor): the model id reaches the router log line raw
 
-`request-router.ts:136` interpolates the requested model id into the log line, and the client-facing schema bounds it by length only (`v1-schemas.ts:10`), so an id carrying a line break forges a second log line. The audit is right that the value has to match a catalog row to get that far, which makes it an identifier the provider declared rather than free text, and it is still text the client chose. The boundary is where this belongs: the v1 schema refuses control characters, so the gateway answers 400 before the request reaches the router, and no log line has to defend itself.
+`request-router.ts:136` interpolates the requested model id into the log line, and the client-facing schema bounds it by length only (`v1-schemas.ts:10`), so an invisible character can reach that line and change how it reads. The audit of spec 018 measured that the stronger version of this claim, "an id carrying a line break forges a second log line", was not reachable in this tree: the policy's anchored pattern cannot match such an id, so the request is refused before the router and the only line written is the refusal. The rule is still worth having, because it turns a confusing refusal into a clear 400 at the boundary, and spec 019 widened the class it refuses, since `Cc` alone left the format characters out.
 
 ### The limit the audit declared on criterion 1
 
@@ -41,6 +41,6 @@ It measured that the new case guards the forward in `pairs.ts`, and that the com
 
 implemented on 2026-09-30. The guard reads the reason once, the v1 schema refuses a control character in a model id, and the case that runs the chain whole now uses the pair the service receives in production.
 
-The evidence: with the three fixes reverted one by one in a single red run, three cases fail, one per fix (the accessor case of the guard, the schema case, and the whole-chain case of the service), while the rest stay green; the three files were restored byte identical, verified by hash. The gate afterwards: 369 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
+The evidence: with the three fixes reverted in a single red run, four cases fail, one per fix except the forward, which turns two red (the composition case of the service and the pair case spec 017 added), while the rest stay green; the three files were restored byte identical, verified by hash. The audit of spec 018 measured the number, which this status first wrote as three, and the correction is here. The gate afterwards: 369 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
 
 The audit of this spec is dispatched with this commit and its outcome is ticked when it returns.
