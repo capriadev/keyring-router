@@ -23,8 +23,14 @@ export type ApiErrorCode =
   | 'internal_error';
 
 type AssertAssignable<From extends To, To> = From;
-type GatewayCodesAreContractCodes = AssertAssignable<ApiErrorCode, ContractApiErrorCode>;
-type ContractCodesAreGatewayCodes = AssertAssignable<ContractApiErrorCode, ApiErrorCode>;
+
+/**
+ * Exported on purpose: the audit noted that a cleanup pass over unused types would delete these two silently,
+ * and an exported type is not unused. Each one is the other's check, so a code added to either declaration
+ * stops this file from compiling until both sides name it.
+ */
+export type GatewayCodesMatchContract = AssertAssignable<ApiErrorCode, ContractApiErrorCode>;
+export type ContractCodesMatchGateway = AssertAssignable<ContractApiErrorCode, ApiErrorCode>;
 
 const INTERNAL_MESSAGE = 'unexpected server error';
 

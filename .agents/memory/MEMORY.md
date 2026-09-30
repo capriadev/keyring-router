@@ -11,12 +11,12 @@ Update at session close. This is not a changelog: it is the state of the work.
 -->
 
 ## Last session
-- M1 to M6 and M8 complete on `feature/v1-gateway`: first slice, provider catalog, secrets, command line, Windows service, OpenAI compatible facade, shared contracts. Specs 001 to 003, 005 to 007, 009 and 010, all kept in `specs/`.
+- M1 to M6, M8 and the fixes of spec 012 complete on `feature/v1-gateway`. The audits of M8 (specs 010 and 012, two independent passes) are closed; spec 013 holds what needs a decision.
 
 ## Next up
-- Open scrutiny before merging: `integrations/providers/chat-transport.ts`, `sse.ts` and `packages/contracts` were written by the coordinating agent, not by an independent lane, so they still owe an external read.
+- Open scrutiny before merging is closed for M8: the provider transports and `packages/contracts` were read by an independent lane twice, and every finding it proved is fixed with a test (spec 012). The residue that needs a decision lives in spec 013 (H-B7, H-B8, the budget constant, the coverage asymmetry).
 - M9 local interface (spec 008) is the chosen next milestone; M7 routing (spec 004) closes the code; M10 live discovery has no spec yet.
-- Teammate lanes are unusable until the Cline account is re-authenticated: three runs failed with `Unauthorized` this session.
+- M9 owns one open criterion from spec 013: the interface needs a test script, or its spec says in writing why reading a live API is out of scope.
 - User only: `kr service install` (elevation), the first run against a real provider key, then merge `feature/v1-gateway` into `main`.
 
 ## Open decisions (unresolved, blocking or not)

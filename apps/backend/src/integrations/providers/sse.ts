@@ -23,9 +23,13 @@ const LINE_BREAK = /\r\n|\r|\n/;
 /**
  * The ceiling on the text waiting for a terminator. A provider that opens an event and never closes it has
  * to fail as a broken response instead of growing this process until it dies: measured before the fix, 64 MB
- * of unterminated data produced zero frames, 422 MB of heap and no failure until the body closed. The
- * ceiling counts what is pending, never the stream, so an answer of any size still arrives as long as its
- * frames keep closing.
+ * of unterminated data produced zero frames, 422 MB of heap and no failure until the body closed.
+ *
+ * It bounds one event, not the stream. A stream of any length arrives as long as every event closes, and an
+ * event larger than this fails as a broken response: the audit proved exactly that, with an 8.5 MiB event
+ * that closes in one read and the same event failing when its close lands in the next one. The number is a
+ * deliberate trade, not a measurement of what a provider may send: no chat frame is a megabyte, and a bound
+ * nothing ever reaches is not a bound. Raising it is the response if a real provider ever needs more.
  */
 const MAX_PENDING_CHARS = 8 * 1024 * 1024;
 

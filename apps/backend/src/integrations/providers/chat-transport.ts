@@ -111,10 +111,15 @@ export class ProtocolChatTransport {
       auth: target.auth,
       fail: this.failure(target),
     });
+    // The credential wins where it collides with a parameter the catalog declares: a credential that cannot
+    // reach its provider is a dead credential, while the declared query is a convenience of the data. The
+    // audit flagged the collision as a silent rule, so here is the rule, written down. No entry declares one
+    // today, which is also why no test can reach it: the rule is stated, not exercised.
     const url = withQuery(
       withDeclaredQuery(this.urlFor(parsed, call), target.urlSuffix),
       auth.query,
     );
+
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       accept: call.stream ? 'text/event-stream' : 'application/json',

@@ -40,12 +40,12 @@ Fix what the audit proved broken, and leave the repository claiming only what it
 - [x] The CLI imports the wire shapes from the package and declares none of its own.
 - [x] Adding a code to either `ApiErrorCode` declaration fails the typecheck of the other.
 - [x] The four workspace typechecks, the backend and command line suites, the build and the end to end run pass.
-- [ ] An independent audit re-reads the fixes and reports what it could not check.
+- [x] An independent audit re-reads the fixes and reports what it could not check.
 
 ## Risks
 
 - Touching `http.ts` reaches every adapter: the transport is shared by four protocols, so the adapter suites are the guard and they run before the commit.
-- The SSE ceiling has to be generous. It bounds the pending buffer, not the stream: a provider may send an answer as large as it likes as long as frames keep being closed.
+- The SSE ceiling bounds one event, not the stream: a stream of any length arrives as long as every event closes, while a single event larger than 8 MiB fails as a broken response. The first version of this spec claimed the opposite, and the re-read proved it false with an 8.5 MiB event that closes in one read and fails when its close lands in the next one. The figure is a deliberate trade and the comment in `sse.ts` now says so; raising it is the answer if a real provider ever needs more.
 - The CLI adoption touches six files that no test covers as wire shapes; its 19 tests read responses through those types, so a wrong import shows up as a failing assertion rather than at compile time.
 
 ## Status
@@ -54,6 +54,15 @@ fixes applied on 2026-09-29, in two commits: `a294795` (the three transport defe
 
 Still owed, and honestly open:
 
-- The re-read by the independent lane (run dispatched after the commits). Until it lands, everything in the two commits is coordinator written and only self verified.
-- H-B7 and H-B8 stay deferred by decision: both need a contract change of their own (`ProviderErrorKind` is frozen by spec 001, and the frame handling lives outside the two files this spec audits).
-- The three unverifiable items of the first pass are unchanged: no interface running against a live API, no real provider, no CI execution.
+- H-B7 and H-B8 stay deferred by decision: both need a contract change of their own (`ProviderErrorKind` is frozen by spec 001, and the frame handling lives outside the two files this spec audits). They moved to spec 013 with the rest of the residue.
+
+## Re-read by the independent lane (run_00019)
+
+Verdict: the three transport fixes and the four contract findings hold, with execution evidence again, and the re-read tried to break each one. It confirmed the budget wins and loses correctly against a client abort in both orders (A1 to A5), that a real 8.5 MiB event closes and a long stream of closing frames is untouched (C5), that the CLI keeps no copy of a wire shape, and that the error code binding fails in both directions. It found four new items, all closed here:
+
+- N-1: `ProviderRow` in `apps/cli/src/commands/models.ts` survived as a partial copy of `ProviderDescriptor`. Closed: the file imports the contract's shape, so criterion 2 is now true rather than marked true.
+- N-2: the comment and the Risks line of this spec claimed the SSE ceiling bounds only unterminated text. False: it bounds one event, and a legitimate 8.5 MiB event fails when its close arrives in a later read. Closed: both texts now say what the code does.
+- N-3: where the credential's query parameter collides with one the catalog declares, the credential wins and the declared value disappears silently. Closed as a written rule at the merge site.
+- N-4: the two binding assertions were unreferenced aliases a cleanup pass could delete. Closed: both are exported, and an exported type is not unused.
+
+N-5 (the budget is now always applied and is a constant with no configuration path) is a note for the future, recorded in spec 013.

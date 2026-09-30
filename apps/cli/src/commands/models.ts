@@ -1,4 +1,4 @@
-import type { CatalogModel, ExposedModel } from '@keyring-router/contracts';
+import type { CatalogModel, ExposedModel, ProviderDescriptor } from '@keyring-router/contracts';
 import { EXIT, request, type CommandContext } from '../client.js';
 import { booleanFlag, parseFlags } from '../args.js';
 import { info, printJson, printRows } from '../output.js';
@@ -59,17 +59,9 @@ export async function providersCommand(context: CommandContext): Promise<number>
     return EXIT.ok;
   }
 
-  interface ProviderRow {
-    readonly providerId: string;
-    readonly displayName: string;
-    readonly format: string;
-    readonly authType: string;
-    readonly modelCount: number;
-  }
-
   printRows(
     ['id', 'name', 'format', 'auth', 'models'],
-    (result.body as readonly ProviderRow[]).map((provider) => [
+    (result.body as readonly ProviderDescriptor[]).map((provider) => [
       provider.providerId,
       provider.displayName,
       provider.format,
