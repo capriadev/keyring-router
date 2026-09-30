@@ -15,13 +15,11 @@ Update at session close. This is not a changelog: it is the state of the work.
 - M9 implemented and audited: seven of its ten criteria were verified by an independent lane and three need a browser. Spec 014 fixed H-B7 and H-B8, and its audit reproduced the red run exactly as written down. The residue of both audits is spec 015.
 
 ## Next up
-- Spec 015 holds the residue of the audits of 008, 014 and 016: the layout reserve, the three empty folders that need the user's word, the fields two codecs still drop in silence (A16-4), a provider fact no run can check here (A16-5), the missing socket to line case (A16-6), the fabricated tool call (A16-7) and the browser walk.
-- Spec 017 is implemented and audited: the second round (`run_00018`) ran its four criteria, found no blocking or important defect, and its findings were fixed in spec 018 or registered in 015.
-- Spec 018 is implemented and audited (`run_00023`): the round found six minor findings and no blocking or important one, and its own findings are spec 019's subject.
-- Spec 019 is implemented (the field reader reads once, the v1 boundary refuses every non-printable class, and two overstated claims of 018 are corrected); its audit is dispatched.
-- M7 routing (spec 004) is blocked on a decision rather than on code: nothing defines how a client asks for a model that several credentials can serve, and neither the priority nor the fallback chain has anywhere to live.
-- Spec 008 closes, and its line leaves `features.md`, only when its three browser-dependent criteria are walked with the panel open.
-- User only: the browser walk of the panel, `kr service install` (elevation), the first run against a real provider key, the remote URL update, then merge into `main`.
+- Specs 017, 018 and 019 are implemented and audited; every round found only minor findings and no blocking or important defect. Spec 020 closes the last round's three (the field reader reads once everywhere, the boundary refuses the whole `C` group, three over-claims corrected) and its audit is dispatched.
+- The audit chain is closed by decision: findings of the same shape, a claim bigger than the code or a fix that closed the instance, are registered in spec 015 instead of chaining another fix spec; an important or blocking finding still opens its own spec.
+- Spec 015 holds the residue of the audits of 008, 014, 016 and 019: fields other codecs still drop in silence, a fabricated tool call, the 404 echoing the id, the layout reserve, the three empty folders that need the user's word, and the browser walk.
+- M7 routing (spec 004) is blocked on a decision rather than on code: nothing defines how a client asks for a model that several credentials can serve, and neither the priority nor the fallback chain has anywhere to live. Spec 008 closes when its three browser-dependent criteria are walked.
+- User only: the browser walk of the panel, `kr service install` (elevation), the first run against a real provider key, the remote URL update, then merge into `main`, plus the two small repository decisions (the empty folders, untracking `next-env.d.ts`).
 
 ## Open decisions (unresolved, blocking or not)
 - Credential deletion: a scoped policy rule currently blocks the delete through the foreign key; decide it in its own spec (full catalog in `architecture.md`).

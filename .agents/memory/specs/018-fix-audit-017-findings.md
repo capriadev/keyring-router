@@ -41,6 +41,6 @@ It measured that the new case guards the forward in `pairs.ts`, and that the com
 
 implemented on 2026-09-30. The guard reads the reason once, the v1 schema refuses a control character in a model id, and the case that runs the chain whole now uses the pair the service receives in production.
 
-The evidence: with the three fixes reverted in a single red run, four cases fail, one per fix except the forward, which turns two red (the composition case of the service and the pair case spec 017 added), while the rest stay green; the three files were restored byte identical, verified by hash. The audit of spec 018 measured the number, which this status first wrote as three, and the correction is here. The gate afterwards: 369 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
+The evidence: with the three fixes reverted in a single red run, four cases fail, one per fix except the forward, whose mutant (dropping the `report` argument) turns two red: the composition case of the service and the pair case spec 017 added. A literal emptying of that forward turns twenty-two red, as the audit of spec 019 measured and spec 020 records. The three files were restored byte identical, verified by hash. The gate afterwards: 369 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
 
 The audit of this spec is dispatched with this commit and its outcome is ticked when it returns.

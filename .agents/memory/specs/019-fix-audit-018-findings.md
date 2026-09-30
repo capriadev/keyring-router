@@ -19,11 +19,11 @@ Close the two code findings and correct the two claims of spec 018 that the audi
 
 The rule was `[^\\p{Cc}]` and its message said "control characters". The audit measured a `Cf` (U+202E, a bidirectional override) reaching the router's resolved line raw and Zl/Zp passing the boundary to be stopped later by the policy's anchored pattern, not by the boundary. So the rule closes one Unicode class and its name claims a property.
 
-The class becomes every non-printable character: `Cc`, `Cf`, `Zl` and `Zp`. The narrowest rule that closes the hole is the one that refuses what cannot be a model id, and an invisible formatting character cannot be part of an identifier a provider declares. The message names the classes it refuses instead of a word that has to be interpreted, and the test asserts one character of each class plus a normal identifier passing on both facades.
+The class becomes `Cc`, `Cf`, `Zl` and `Zp`, which is four Unicode families and not "every non-printable character": the audit of this spec measured `Co`, `Cn` and `Cs` passing it, and spec 020 widened the rule to the whole `C` group. This wording is corrected here rather than left claiming a property the rule did not have, which is the same over-claim the spec was written to fix. The narrowest rule that closes the hole is the one that refuses what cannot be a model id, and an invisible formatting character cannot be part of an identifier a provider declares. The message names the families it refuses instead of a word that has to be interpreted, and the test asserts one character of each family plus a normal identifier passing on both facades.
 
 ### H4 and H5 (minor): two claims of spec 018 corrected
 
-- H4: spec 018 says the red run failed three cases, one per fix. The audit measured four: emptying the forward in `pairs.ts` turns two cases red, the composition case of the service and the pair case of spec 017. The correction is written where the claim is.
+- H4: spec 018 says the red run failed three cases, one per fix. The audit measured four, with the mutant that run actually used: the forward in `pairs.ts` dropping its `report` argument turns two cases red, the composition case of the service and the pair case spec 017 added. A literal emptying of the same forward (`() => []`) turns twenty-two red, which the audit of this spec measured and spec 020 records, because a number belongs with the mutant that produced it.
 - H5: spec 018 justified the boundary rule by saying an id with a line break forges a second log line. Measured with the rule off, it does not: the policy's anchored pattern cannot match such an id, so the request is refused and the only line written is the refusal. The rule is still worth having, because it turns a confusing 404 into a clear 400 before the router, and the premise is corrected to what the audit measured.
 
 ## Acceptance criteria
@@ -42,7 +42,7 @@ The class becomes every non-printable character: `Cc`, `Cf`, `Zl` and `Zp`. The 
 
 ## Status
 
-implemented on 2026-09-30. `readFirst` reads its key once, the v1 boundary refuses every non-printable class instead of `Cc` alone, and the two claims of spec 018 that the audit measured as overstated are corrected where they were written.
+implemented on 2026-09-30. `readFirst` reads its key once, the v1 boundary refuses four non-printable families instead of `Cc` alone, and the two claims of spec 018 that the audit measured as overstated are corrected where they were written. The audit of this spec measured that two of those claims were still too big and that the class behind the first fix lived on in three callers; spec 020 closes both.
 
 The evidence: with `readFirst` reading twice and the class narrowed back to `Cc`, five cases fail, one for the reader and four for the classes the narrow rule left open, while the rest stay green; both files were restored byte identical, verified by hash. The gate afterwards: 374 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
 
