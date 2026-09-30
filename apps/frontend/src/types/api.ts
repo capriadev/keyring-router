@@ -48,3 +48,7 @@ export type PolicyRuleInput = PolicyRuleCreateRequest;
 
 /** The namespace slug rule, mirrored so the form can explain a typo before sending it. */
 export const NAMESPACE_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
+
+/** The same boundary the gateway applies to a secret, mirrored so the form can explain a length before sending it. */
+export const SECRET_MIN_LENGTH = 8;
+export const SECRET_MAX_LENGTH = 4096;

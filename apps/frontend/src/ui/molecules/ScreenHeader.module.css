@@ -1,0 +1,20 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+}
+
+.lede {
+  margin: 0;
+  max-width: var(--layout-prose-width);
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}

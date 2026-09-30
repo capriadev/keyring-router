@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, HTMLInputTypeAttribute } from 'react';
 import styles from './TextField.module.css';
 
 export interface TextFieldProps {
@@ -10,6 +10,10 @@ export interface TextFieldProps {
   readonly hint?: string;
   readonly disabled?: boolean;
   readonly required?: boolean;
+  /** `password` for a value the user types and the panel never reads back; `search` for a filter. */
+  readonly type?: HTMLInputTypeAttribute;
+  readonly autoComplete?: string;
+  readonly maxLength?: number;
 }
 
 /** Controlled text input with label and optional hint. Normalizes the event to its string value. */
@@ -22,6 +26,9 @@ export function TextField({
   hint,
   disabled = false,
   required = false,
+  type = 'text',
+  autoComplete,
+  maxLength,
 }: TextFieldProps) {
   const hintId = hint === undefined ? undefined : `${id}-hint`;
 
@@ -33,11 +40,13 @@ export function TextField({
       <input
         id={id}
         className={styles.input}
-        type="text"
+        type={type}
         value={value}
         placeholder={placeholder}
         disabled={disabled}
         required={required}
+        autoComplete={autoComplete}
+        maxLength={maxLength}
         aria-describedby={hintId}
         onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
       />

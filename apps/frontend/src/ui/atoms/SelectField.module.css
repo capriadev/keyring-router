@@ -13,7 +13,7 @@
   text-transform: uppercase;
 }
 
-.input {
+.select {
   width: 100%;
   border: var(--border-width-thin) solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -25,15 +25,11 @@
   line-height: var(--line-height-normal);
 }
 
-.input::placeholder {
-  color: var(--color-muted);
-}
-
-.input:focus {
+.select:focus {
   border-color: var(--color-accent);
 }
 
-.input:disabled {
+.select:disabled {
   color: var(--color-muted);
   border-color: var(--color-border);
   cursor: not-allowed;

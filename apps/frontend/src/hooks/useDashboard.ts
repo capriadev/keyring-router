@@ -1,60 +1,84 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { listCatalog } from '../services/api/catalog';
-import { describeApiError } from '../services/api/client';
-import {
-  createCredential,
-  listCredentials,
-  refreshCredential,
-  validateCredential,
-} from '../services/api/credentials';
-import { fetchHealth } from '../services/api/health';
-import { listModels } from '../services/api/models';
-import { createPolicyRule } from '../services/api/policies';
-import { listProviders } from '../services/api/providers';
+import { createContext, useContext } from 'react';
 import type {
   CatalogModel,
+  CatalogResponse,
   Credential,
   CredentialInput,
-  ExposedModel,
+  CredentialsResponse,
   HealthResponse,
-  ProviderDescriptor,
+  ModelsResponse,
+  ProvidersResponse,
 } from '../types/api';
 
-export type ActionName = 'reload' | 'create' | 'validate' | 'refresh' | 'allow';
+export type ActionName = 'reload' | 'create' | 'validate' | 'refresh' | 'allow' | 'deny';
 
-/** Single in-flight action: `targetId` is a credential id or a namespaced model id, null for reload. */
+/** Single in-flight action: `targetId` is a credential or namespaced model id, null for a full reload. */
 export interface PendingAction {
   readonly action: ActionName;
   readonly targetId: string | null;
 }
 
-export type CredentialAction = 'validate' | 'refresh';
-
-export interface DashboardState {
-  readonly health: HealthResponse | null;
-  readonly credentials: readonly Credential[];
-  /** The provider catalog, so no form offers a hardcoded provider list. */
-  readonly providers: readonly ProviderDescriptor[];
-  readonly catalog: readonly CatalogModel[];
-  readonly models: readonly ExposedModel[];
-  /** True while the initial or a manual full load runs. */
-  readonly loading: boolean;
-  readonly pending: PendingAction | null;
-  /** Spanish message of the last failure, already translated by `services/api`. */
+/**
+ * One resource as a panel sees it: the last reading, the failure of the last attempt, and whether an
+ * attempt is in flight. There is no fourth state: what is not read yet is loading, empty or failed.
+ */
+export interface Loadable<T> {
+  readonly data: T | null;
   readonly error: string | null;
+  readonly loading: boolean;
+}
+
+/**
+ * Everything the screens read and every call they can make. One provider owns the five resources, so
+ * swapping screens reuses what is already loaded and no panel ever fetches while rendering.
+ */
+export interface DashboardStore {
+  readonly health: Loadable<HealthResponse>;
+  readonly providers: Loadable<ProvidersResponse>;
+  readonly credentials: Loadable<CredentialsResponse>;
+  /** Discovered models with the exposure decision the gateway made for each one. */
+  readonly catalog: Loadable<CatalogResponse>;
+  /** Only the models the policy lets through: the same catalog seen from the routing side. */
+  readonly models: Loadable<ModelsResponse>;
+  readonly pending: PendingAction | null;
+  /** True while any of the five readings is in flight, so a global control can show it. */
+  readonly loading: boolean;
+  /** Last action that was applied. Mutations report here, never in a list error. */
   readonly notice: string | null;
-  readonly reload: () => void;
-  /** Resolves true when the mutation was applied; the form clears itself exclusively then. */
+  /** Last action that failed, already translated to Spanish by the service layer. */
+  readonly actionError: string | null;
+  readonly refreshAll: () => void;
+  readonly refreshHealth: () => void;
+  readonly refreshProviders: () => void;
+  /** Credentials plus the catalog, because a credential is listed with how much it discovered. */
+  readonly refreshCredentials: () => void;
+  /** The catalog plus the exposed listing: the two readings of one policy decision. */
+  readonly refreshCatalog: () => void;
+  /** Resolves true only when the credential was stored; the form clears itself exclusively then. */
   readonly create: (input: CredentialInput) => Promise<boolean>;
   readonly validate: (credential: Credential) => Promise<boolean>;
-  readonly refresh: (credential: Credential) => Promise<boolean>;
+  readonly refreshCredential: (credential: Credential) => Promise<boolean>;
   readonly allow: (model: CatalogModel) => Promise<boolean>;
+  readonly deny: (model: CatalogModel) => Promise<boolean>;
+}
+
+export const DashboardContext = createContext<DashboardStore | null>(null);
+
+/** Reads the store. Throwing here beats a screen silently rendering an empty gateway. */
+export function useDashboard(): DashboardStore {
+  const store = useContext(DashboardContext);
+
+  if (store === null) {
+    throw new Error('useDashboard se uso fuera del proveedor de datos del panel.');
+  }
+
+  return store;
 }
 
 /** Action in flight for one credential row, so the row can label the button that is running. */
-export function credentialAction(pending: PendingAction | null, credentialId: string): CredentialAction | null {
+export function credentialAction(pending: PendingAction | null, credentialId: string): 'validate' | 'refresh' | null {
   if (pending === null || pending.targetId !== credentialId) {
     return null;
   }
@@ -62,154 +86,11 @@ export function credentialAction(pending: PendingAction | null, credentialId: st
   return pending.action === 'validate' || pending.action === 'refresh' ? pending.action : null;
 }
 
-export function isModelPending(pending: PendingAction | null, namespacedId: string): boolean {
-  return pending?.action === 'allow' && pending.targetId === namespacedId;
-}
-
-/**
- * Applies a request result, or reports its failure. Health is cleared on failure because the badge
- * must not claim a gateway that did not answer; lists keep their previous content.
- */
-async function loadInto<T>(
-  request: Promise<T>,
-  apply: (value: T) => void,
-  clear?: () => void,
-): Promise<string | null> {
-  try {
-    apply(await request);
+/** Action in flight for one model row, so the row can label the button that is running. */
+export function modelAction(pending: PendingAction | null, namespacedId: string): 'allow' | 'deny' | null {
+  if (pending === null || pending.targetId !== namespacedId) {
     return null;
-  } catch (failure) {
-    clear?.();
-    return describeApiError(failure);
   }
-}
 
-/**
- * Dashboard state: one place owns every request, every pending action and the single error slot.
- * Each mutation reloads the lists it invalidates, so no component caches server state.
- */
-export function useDashboard(): DashboardState {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [credentials, setCredentials] = useState<readonly Credential[]>([]);
-  const [providers, setProviders] = useState<readonly ProviderDescriptor[]>([]);
-  const [catalog, setCatalog] = useState<readonly CatalogModel[]>([]);
-  const [models, setModels] = useState<readonly ExposedModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const loadAll = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    setPending({ action: 'reload', targetId: null });
-    setError(null);
-    setNotice(null);
-
-    const failures = await Promise.all([
-      loadInto(fetchHealth(), setHealth, () => setHealth(null)),
-      loadInto(listCredentials(), setCredentials),
-      loadInto(listProviders(), setProviders),
-      loadInto(listCatalog(), setCatalog),
-      loadInto(listModels(), setModels),
-    ]);
-
-    setError(failures.find((failure) => failure !== null) ?? null);
-    setPending(null);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
-
-  /** Runs one action through a single in-flight slot, reporting its outcome in Spanish. */
-  const runAction = useCallback(
-    async (action: PendingAction, work: () => Promise<string>): Promise<boolean> => {
-      setPending(action);
-      setError(null);
-      setNotice(null);
-
-      try {
-        setNotice(await work());
-        return true;
-      } catch (failure) {
-        setError(describeApiError(failure));
-        return false;
-      } finally {
-        setPending(null);
-      }
-    },
-    [],
-  );
-
-  const reload = useCallback((): void => {
-    void loadAll();
-  }, [loadAll]);
-
-  const create = useCallback(
-    (input: CredentialInput): Promise<boolean> =>
-      runAction({ action: 'create', targetId: input.namespace }, async () => {
-        const credential = await createCredential(input);
-        setCredentials(await listCredentials());
-        return `Credencial ${credential.namespace} registrada en ${credential.baseUrl}.`;
-      }),
-    [runAction],
-  );
-
-  const validate = useCallback(
-    (credential: Credential): Promise<boolean> =>
-      runAction({ action: 'validate', targetId: credential.id }, async () => {
-        const result = await validateCredential(credential.id);
-        setCredentials(await listCredentials());
-        return result.ok
-          ? `Credencial ${credential.namespace} validada contra el proveedor.`
-          : `Credencial ${credential.namespace} sin respuesta valida del proveedor.`;
-      }),
-    [runAction],
-  );
-
-  const refresh = useCallback(
-    (credential: Credential): Promise<boolean> =>
-      runAction({ action: 'refresh', targetId: credential.id }, async () => {
-        const result = await refreshCredential(credential.id);
-        setCredentials(await listCredentials());
-        setCatalog(await listCatalog());
-        setModels(await listModels());
-        return `Catalogo de ${credential.namespace}: ${result.discovered} descubiertos, ${result.exposed} expuestos.`;
-      }),
-    [runAction],
-  );
-
-  /** Exposing one model is an allow rule scoped to its credential with the exact namespaced id. */
-  const allow = useCallback(
-    (model: CatalogModel): Promise<boolean> =>
-      runAction({ action: 'allow', targetId: model.namespacedId }, async () => {
-        await createPolicyRule({
-          credentialId: model.credentialId,
-          pattern: model.namespacedId,
-          effect: 'allow',
-        });
-        setCatalog(await listCatalog());
-        setModels(await listModels());
-        return `Regla de permiso creada para ${model.namespacedId}.`;
-      }),
-    [runAction],
-  );
-
-  return {
-    health,
-    credentials,
-    providers,
-    catalog,
-    models,
-    loading,
-    pending,
-    error,
-    notice,
-    reload,
-    create,
-    validate,
-    refresh,
-    allow,
-  };
+  return pending.action === 'allow' || pending.action === 'deny' ? pending.action : null;
 }

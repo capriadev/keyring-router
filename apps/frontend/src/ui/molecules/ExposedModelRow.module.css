@@ -33,14 +33,25 @@
   vertical-align: top;
 }
 
-.muted {
-  color: var(--color-muted);
+.providerModel {
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+  word-break: break-all;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-sm);
 }
 
+.copied {
+  color: var(--color-ok);
+  font-size: var(--font-size-xs);
+}
+
+.failed {
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+}
