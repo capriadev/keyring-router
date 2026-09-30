@@ -20,6 +20,8 @@ A third appearance, on 2026-09-30, added a datum worth keeping: a freshly spawne
 4. Never commit what a dead lane left behind without running the full bar: typecheck of every workspace, tests, build and the end to end run.
 5. Re-authenticate before spawning lanes again. Until then the work continues in the coordinating session, and every file written without an independent read is recorded as open scrutiny.
 6. A failed dispatch is visible at once: read `team_list_runs` instead of waiting on an await, and treat a run that never left `iteration_2_started` as never started.
+7. A lane that dies mid flight can leave the tree dirty, not only a file truncated: seen on 2026-09-30, a lane backing up a product file and applying its own red state died with `Unauthorized` and left `pairs.ts` emptied, which cost the next audit its whole round (it found the dirty tree first and reported it instead of the criteria). Check `git status --short` immediately before dispatching an audit and again after any lane dies, and never trust a check made before the lane ran.
+8. A generated file can dirty the tree on its own: `apps/frontend/next-env.d.ts` is rewritten by Next on a dev run and again on a build, flipping between `.next/dev/types` and `.next/types`. It broke an audit baseline once. Registering or untracking it is a tooling decision, not a silent commit.
 
 ## Tags
 

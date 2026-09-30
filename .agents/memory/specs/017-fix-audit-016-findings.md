@@ -34,7 +34,7 @@ The line said `frames=<n>` while counting reports, and one Gemini frame whose `p
 - [x] The line reads `drops=<n>`, and a case asserts that one frame with three unreadable parts is three drops.
 - [x] The suites of specs 001 to 016 keep passing, and the end to end run keeps passing. 366 backend tests, 19 command line tests, 17 interface tests, the build of the four workspaces and the 27 case end to end run, all green.
 - [x] Spec 016's claim about the compiler is corrected where it is written, and spec 015 registers A16-4, A16-5, A16-6 and A16-7 with their severity and the decision each needs.
-- [ ] An independent audit reproduces every criterion. Dispatched with the commit that closes this spec, and ticked when it returns, as specs 014 and 016 record their own.
+- [ ] An independent audit reproduces every criterion. RAN and did not finish: `run_00016` (2026-09-30, report in `temp/audit-017-report.md`) spent the round on a finding about the working tree and its report contains no criterion. The finding is real and is recorded in the Status below; the criteria keep no independent read, so this stays unticked and the round is not counted as the audit this spec asked for.
 
 ## Risks
 
@@ -47,4 +47,12 @@ implemented on 2026-09-30. The forward in `pairs.ts` now has a case of its own o
 
 The evidence: emptying the forward fails exactly one case of `pairs.spec.ts` (66 tests, 65 pass, 1 fail) where the audit had measured the whole suite green; disabling the guard makes the line carry the forced payload literally; both files were restored byte identical, verified by hash. The gate afterwards: 366 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
 
-The audit of this spec is dispatched with this commit and its outcome is ticked when it returns.
+## Status of the audit, which ran and did not finish
+
+The audit ran on 2026-09-30 (`run_00016`, report in `temp/audit-017-report.md`) and spent the round on a finding about the working tree rather than on the criteria. It is a real finding and it is worth writing down exactly:
+
+- F1 (important): the tree was **not** clean when the round started. `pairs.ts` held the emptied forward, which is the red state of criterion 1. The cause is not the restores of this spec, which are verified: a lane that died mid flight (`run_00015`, `Unauthorized`) left the product file with its own red state applied after backing it up. The audit measured that the delivered tree then failed the whole suite (366 tests, 365 pass, 1 fail), and that the commit `de4f243` itself is correct: the emptied forward existed only in the working tree.
+- The audit restored `pairs.ts` to the content of HEAD, byte for byte, with no git command that writes, and kept the as-found bytes in `temp/a17_audit_asfound_pairs.ts` so nothing was lost. It reported the decision instead of taking it silently.
+- Criteria 1 to 4 of this spec have no independent read: the report does not contain them. The criterion above stays unticked for that reason, and the round is not counted as the audit this spec asked for.
+
+What this teaches the process is in `.agents/memory/errors/agent-lane-died-mid-write.md`: the tree has to be checked immediately before dispatching an audit and again after any lane dies, because a dying lane can leave product files written and the failure reads as a technical one.
