@@ -111,7 +111,7 @@ async function readErrorBody(response: Response): Promise<ApiError> {
 }
 
 export interface RequestOptions {
-  readonly method?: 'GET' | 'POST';
+  readonly method?: 'GET' | 'POST' | 'PATCH';
   readonly body?: unknown;
 }
 

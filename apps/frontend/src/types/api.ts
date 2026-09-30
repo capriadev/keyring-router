@@ -16,6 +16,8 @@ export type {
   CatalogRefreshResult,
   CatalogResponse,
   Credential,
+  CredentialCreateRequest,
+  CredentialSecretRequest,
   CredentialsResponse,
   DeclaredModel,
   ExposedModel,

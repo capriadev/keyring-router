@@ -2,36 +2,9 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 
 import { ApiError, describeApiError, requestJson } from './client';
+import { jsonResponse, restoreFetch, sentRequests, stubFetch } from './fetch-stub';
 
-/** The last URL and init the client issued, so a test can read what would have been sent. */
-interface Captured {
-  readonly url: string;
-  readonly init: RequestInit | undefined;
-}
-
-let captured: Captured[] = [];
-const realFetch = globalThis.fetch;
-
-/** Replaces the global fetch for one test: the client is the only module that reaches the network. */
-function stubFetch(respond: () => Response | Promise<Response>): void {
-  captured = [];
-  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-    captured.push({ url: String(input), init });
-
-    return await respond();
-  }) as typeof fetch;
-}
-
-function jsonResponse(status: number, payload: unknown): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
-afterEach(() => {
-  globalThis.fetch = realFetch;
-});
+afterEach(restoreFetch);
 
 describe('requestJson', () => {
   it('returns the parsed body of a successful answer', async () => {
@@ -40,8 +13,8 @@ describe('requestJson', () => {
     const body = await requestJson<{ status: string }>('/api/health');
 
     assert.equal(body.status, 'ok');
-    assert.equal(captured.length, 1);
-    assert.ok(captured[0].url.endsWith('/api/health'));
+    assert.equal(sentRequests().length, 1);
+    assert.ok(sentRequests()[0].url.endsWith('/api/health'));
   });
 
   it('sends a POST body as JSON and reads nothing else from the caller', async () => {
@@ -49,9 +22,9 @@ describe('requestJson', () => {
 
     await requestJson('/api/credentials', { method: 'POST', body: { namespace: 'local-main' } });
 
-    assert.equal(captured[0].init?.method, 'POST');
-    assert.deepEqual(captured[0].init?.headers, { 'content-type': 'application/json' });
-    assert.equal(captured[0].init?.body, JSON.stringify({ namespace: 'local-main' }));
+    assert.equal(sentRequests()[0].init?.method, 'POST');
+    assert.deepEqual(sentRequests()[0].init?.headers, { 'content-type': 'application/json' });
+    assert.equal(sentRequests()[0].init?.body, JSON.stringify({ namespace: 'local-main' }));
   });
 
   it('reports a transport failure as a network error with no status', async () => {

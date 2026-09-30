@@ -2,6 +2,7 @@ import type {
   CatalogRefreshResult,
   Credential,
   CredentialInput,
+  CredentialSecretRequest,
   CredentialsResponse,
   ValidationResult,
 } from '../../types/api';
@@ -30,5 +31,18 @@ export function validateCredential(credentialId: string): Promise<ValidationResu
 export function refreshCredential(credentialId: string): Promise<CatalogRefreshResult> {
   return requestJson<CatalogRefreshResult>(`${RESOURCE}/${encodeURIComponent(credentialId)}/refresh`, {
     method: 'POST',
+  });
+}
+
+/**
+ * `PATCH /api/credentials/:id/secret`. The new secret travels in the request body and is never read
+ * back: the answer is the credential with its rotated hint and the previous secret is gone.
+ */
+export function rotateCredentialSecret(credentialId: string, secret: string): Promise<Credential> {
+  const body: CredentialSecretRequest = { secret };
+
+  return requestJson<Credential>(`${RESOURCE}/${encodeURIComponent(credentialId)}/secret`, {
+    method: 'PATCH',
+    body,
   });
 }
