@@ -3,6 +3,7 @@ import type {
   ChatFormat,
   ChatRequest,
   ChatResponse,
+  FrameReport,
   TranslateRequestOptions,
   TranslatedRequest,
 } from '../../../types/chat.js';
@@ -17,6 +18,6 @@ export interface ProtocolCodec {
   readonly format: ChatFormat;
   encodeRequest(request: ChatRequest, options: TranslateRequestOptions): TranslatedRequest;
   decodeResponse(payload: unknown): ChatResponse;
-  /** A provider frame may carry several chunks, or none at all. */
-  decodeChunk(payload: unknown): readonly ChatChunk[];
+  /** A provider frame may carry several chunks, or none at all. A dropped frame is reported, not swallowed. */
+  decodeChunk(payload: unknown, report?: FrameReport): readonly ChatChunk[];
 }

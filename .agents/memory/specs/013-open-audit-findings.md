@@ -27,6 +27,10 @@ The 10 s budget now reaches every call and has no path to be configured. Decisio
 
 The gateway owns the boundary and applies it: `SECRET_MIN_LENGTH = 8` and `SECRET_MAX_LENGTH = 4096` are declared in `apps/backend/src/types/credential.ts` and enforced by `gateway/schemas.ts`. The interface declares the same two numbers again in `apps/frontend/src/types/api.ts` so the form can explain a length before sending anything. Verified on 2026-09-30: the two pairs agree, so nothing is broken today. Decision: the mirror stays, for a real reason rather than convenience. `@keyring-router/contracts` is imported type-only by all four workspaces, and the root build runs `apps/*` before `packages/*`, so the first runtime import of that package from the interface would make the interface build depend on an artifact built after it. Making the package runtime-consumed, with its build order and its transpilation, is its own change and not a drive-by one. The risk left is named: a future change to the gateway's bound needs the interface's copy updated by hand, and only a live check would catch the drift. The namespace pattern is mirrored the same way and carries the same note in the file: the gateway remains the authority.
 
+### N-7: a mid stream provider failure is not a provider failure
+
+Read while writing spec 014, not reproduced by a test yet. `readSseFrames` in `sse.ts` iterates the body with no catch around the loop, and `ChatService.translatedChunks` forwards the rejection of `iterator.next()` unchanged, so a socket that dies after the first byte raises whatever the transport raised and not a `ProviderFailure`. The gateway maps an unknown error to 500 `internal_error` with `unexpected server error`, which hides that the provider broke the stream. Decision: its own fix, in the same family as H-B7 and H-B8, with a test that raises a chunk iterable inside the read and asserts what the client is told. Not fixed in 014 because 013 named exactly two items for that spec.
+
 ## What no run has covered, and stays open by nature
 
 - The interface running against a live API: the interface has a test script now (see the criterion below), but that script covers pure modules with an injected fetch; the end to end run does not start Next, so no run has ever rendered a screen against a live gateway.
@@ -37,7 +41,7 @@ The gateway owns the boundary and applies it: `SECRET_MIN_LENGTH = 8` and `SECRE
 
 ## Acceptance criteria
 
-- [ ] H-B7 and H-B8 are fixed in a fix spec of their own, each with a test that fails without the fix, and the error contract change is decided in writing.
+- [x] H-B7 and H-B8 are fixed in a fix spec of their own, each with a test that fails without the fix, and the error contract change is decided in writing. Spec 014, implemented on 2026-09-30: `ProviderErrorKind` gained `aborted` with the alternatives considered and rejected in writing, the classification lives in `send()`, and the dropped frame is reported through a `FrameReport` port. The red run behind it: reverting the fix makes 5 of the 12 new cases fail, and the files were restored byte identical, verified by hash.
 - [x] The interface gets a test script, or the interface milestone states in its spec why reading a live API is out of scope for this version. The script exists as of 2026-09-30: `npm run test --workspace apps/frontend` runs node:test over `src/**/*.spec.ts` (14 cases: the HTTP client's error mapping plus the wire shape of every credential call, including the rotation added for spec 008). Why reading a live API is still not covered is answered in spec 008 when M9 closes.
 
 ## Status

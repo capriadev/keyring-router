@@ -93,6 +93,11 @@ function requestSignal(input: JsonRequestInput): AbortSignal {
 /**
  * One request to a provider endpoint. Every failure is a `ProviderFailure` with a fixed message: the
  * caught error is dropped on purpose, because it can quote headers, the URL or the response body.
+ *
+ * A client that is already gone is reported as `aborted`, not as an unreachable provider: the two
+ * events look alike from the socket and mean opposite things to whoever reads the log or decides
+ * whether a credential is healthy. Only the client's own signal is read, so a call that ran out of
+ * budget keeps saying the provider did not answer.
  */
 async function send(input: JsonRequestInput): Promise<ProviderHttpResponse> {
   const { label, operation } = input;
@@ -105,6 +110,10 @@ async function send(input: JsonRequestInput): Promise<ProviderHttpResponse> {
       ...(input.body === undefined ? {} : { body: input.body }),
     });
   } catch {
+    if (input.signal?.aborted === true) {
+      throw input.fail('aborted', `the client stopped ${operation}`);
+    }
+
     throw input.fail('unreachable', `${label} did not answer ${operation}`);
   }
 }

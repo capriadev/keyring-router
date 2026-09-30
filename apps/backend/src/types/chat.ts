@@ -108,6 +108,18 @@ export interface TranslatedRequest {
   readonly warnings: readonly string[];
 }
 
+/**
+ * Stable code of a frame a translator refused to read. A provider that sends one ends the stream with
+ * no frame and no failure, so the drop has to be reported instead of disappearing: spec 014.
+ */
+export type FrameDropCode = 'frame_dropped';
+
+/**
+ * Where a translator reports a frame it dropped, and why, in its own words: the detail names the shape
+ * of what arrived and never its content, because a frame is provider data and may carry anything.
+ */
+export type FrameReport = (code: FrameDropCode, detail: string) => void;
+
 /** One implementation per pair of formats. A pair that is not registered fails loudly. */
 export interface ChatTranslator {
   readonly from: ChatFormat;
@@ -115,6 +127,9 @@ export interface ChatTranslator {
   translateRequest(request: ChatRequest, options: TranslateRequestOptions): TranslatedRequest;
   /** A non streaming answer. */
   translateResponse(payload: unknown): ChatResponse;
-  /** One streamed frame. A provider frame may carry several chunks, or none. */
-  translateChunk(payload: unknown): readonly ChatChunk[];
+  /**
+   * One streamed frame. A provider frame may carry several chunks, or none. `report` is the caller's
+   * way of hearing about a frame the translator had to drop; a translator with no report stays silent.
+   */
+  translateChunk(payload: unknown, report?: FrameReport): readonly ChatChunk[];
 }

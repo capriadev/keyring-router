@@ -44,7 +44,7 @@ export function createPairTranslator(from: ChatFormat, to: ChatFormat): ChatTran
     to: codec.format,
     translateRequest: (request, options) => codec.encodeRequest(request, options),
     translateResponse: (payload) => codec.decodeResponse(payload),
-    translateChunk: (payload) => codec.decodeChunk(payload),
+    translateChunk: (payload, report) => codec.decodeChunk(payload, report),
   };
 }
 

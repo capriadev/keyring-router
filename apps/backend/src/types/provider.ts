@@ -18,7 +18,12 @@ export interface AdapterTarget {
   secret?: string;
 }
 
-export type ProviderErrorKind = 'unreachable' | 'unauthorized' | 'invalid_response' | 'unknown';
+/**
+ * How a provider call failed. `aborted` is the client's own doing: it stopped the call and nobody is
+ * waiting for an answer, which is not the same event as a provider that did not answer. Spec 001 froze
+ * this union; spec 014 extended it in writing, and this is the value it added.
+ */
+export type ProviderErrorKind = 'unreachable' | 'unauthorized' | 'invalid_response' | 'unknown' | 'aborted';
 
 /**
  * Secret-free provider failure. The message never carries headers, tokens or raw provider payloads.

@@ -6,6 +6,7 @@ import type {
   ChatToolCall,
   ChatToolDefinition,
   ChatUsage,
+  FrameReport,
   TranslateRequestOptions,
   TranslatedRequest,
 } from '../../../types/chat.js';
@@ -120,8 +121,8 @@ function decodeResponse(payload: unknown): ChatResponse {
   };
 }
 
-function decodeChunk(payload: unknown): readonly ChatChunk[] {
-  const frame = parseFrame(payload);
+function decodeChunk(payload: unknown, report?: FrameReport): readonly ChatChunk[] {
+  const frame = parseFrame(payload, report);
 
   if (frame === null) {
     return [];

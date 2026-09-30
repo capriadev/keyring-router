@@ -12,5 +12,5 @@ export const ollamaCodec: ProtocolCodec = {
   format: 'ollama',
   encodeRequest: (request, options) => openAiCodec.encodeRequest(request, options),
   decodeResponse: (payload) => openAiCodec.decodeResponse(payload),
-  decodeChunk: (payload) => openAiCodec.decodeChunk(payload),
+  decodeChunk: (payload, report) => openAiCodec.decodeChunk(payload, report),
 };

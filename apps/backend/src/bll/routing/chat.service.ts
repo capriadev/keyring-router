@@ -1,6 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { ChatChunk, ChatRequest, ChatResponse, TranslatedRequest } from '../../types/chat.js';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type {
+  ChatChunk,
+  ChatRequest,
+  ChatResponse,
+  FrameReport,
+  TranslatedRequest,
+} from '../../types/chat.js';
 import type { ProviderChatCall } from '../../types/chat-transport.js';
+import { countFrameDrops } from '../translation/frame-report.js';
 import { ClientDisconnectedError } from './errors.js';
 import { RequestRouter, type ResolvedRoute, type RouteInput } from './request-router.js';
 import { mapTranslationFailure } from './translation.js';
@@ -36,6 +43,8 @@ export interface ChatStream {
  */
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger('ChatService');
+
   constructor(@Inject(RequestRouter) private readonly router: RequestRouter) {}
 
   async complete(input: ChatCallInput): Promise<ChatCompletion> {
@@ -71,12 +80,16 @@ export class ChatService {
    * Each provider frame, translated to the client's format and yielded at once. A frame that carries
    * nothing for the client yields nothing; a frame the translator refuses fails loudly, so a broken
    * stream is reported instead of being trimmed in silence.
+   *
+   * A frame the translator had to drop is counted and reported once, when the request is over: the
+   * response has already started, so the log is the only place left to say it. Spec 014.
    */
   private async *translatedChunks(
     route: ResolvedRoute,
     frames: AsyncIterable<unknown>,
     signal?: AbortSignal,
   ): AsyncGenerator<ChatChunk> {
+    const drops = countFrameDrops();
     const iterator = frames[Symbol.asyncIterator]();
 
     try {
@@ -91,7 +104,7 @@ export class ChatService {
           return;
         }
 
-        for (const chunk of this.translatedChunk(route, frame.value)) {
+        for (const chunk of this.translatedChunk(route, frame.value, drops.report)) {
           yield chunk;
         }
       }
@@ -99,6 +112,12 @@ export class ChatService {
       // Closing the iterator is what stops the provider stream: a consumer that walked away must not
       // leave a request paying for frames nobody will read.
       await iterator.return?.(undefined);
+
+      const dropped = drops.line(route.requestId);
+
+      if (dropped !== null) {
+        this.logger.warn(dropped);
+      }
     }
   }
 
@@ -118,9 +137,9 @@ export class ChatService {
     }
   }
 
-  private translatedChunk(route: ResolvedRoute, payload: unknown): readonly ChatChunk[] {
+  private translatedChunk(route: ResolvedRoute, payload: unknown, report?: FrameReport): readonly ChatChunk[] {
     try {
-      return route.translator.translateChunk(payload);
+      return route.translator.translateChunk(payload, report);
     } catch (error) {
       throw mapTranslationFailure(error, route.pair, route.providerId);
     }
