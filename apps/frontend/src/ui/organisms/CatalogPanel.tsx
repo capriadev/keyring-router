@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { formatCount } from '../../format/display';
 import { modelAction, useDashboard } from '../../hooks/useDashboard';
 import { ActionButton } from '../atoms/ActionButton';
 import { TextField } from '../atoms/TextField';
 import { DataTable } from '../molecules/DataTable';
-import { MetaList } from '../molecules/MetaList';
+import { MetaList, type MetaListItem } from '../molecules/MetaList';
 import { ModelRow } from '../molecules/ModelRow';
 import { ResourceState } from '../molecules/ResourceState';
 import { ScreenSection } from '../molecules/ScreenSection';
@@ -39,9 +40,9 @@ export function CatalogPanel() {
     [rows, needle],
   );
 
-  const counts = [
-    { label: 'Descubiertos', value: rows === null ? 'sin datos' : String(rows.length) },
-    { label: 'Expuestos', value: models.data === null ? 'sin datos' : String(models.data.length) },
+  const counts: readonly MetaListItem[] = [
+    { label: 'Descubiertos', value: formatCount(rows === null ? null : rows.length) },
+    { label: 'Expuestos', value: formatCount(models.data === null ? null : models.data.length) },
   ];
 
   return (
@@ -88,7 +89,8 @@ export function CatalogPanel() {
         />
       )}
 
-      {visible.length > 0 && (
+      {/* The table is drawn whenever there are rows, even with none visible: its columns do not vanish while typing. */}
+      {rows !== null && rows.length > 0 && (
         <DataTable
           caption="Catalogo descubierto con la decision de exposicion de cada modelo"
           columns={COLUMNS}

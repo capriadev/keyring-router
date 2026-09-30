@@ -1,0 +1,7 @@
+/*
+ * The same reserved height as the table this state stands in for, so a note and the rows that replace
+ * it occupy one box: when the reading lands, the content below it has not moved.
+ */
+.reserved {
+  min-height: var(--layout-data-min-height);
+}

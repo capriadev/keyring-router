@@ -25,5 +25,5 @@
   color: var(--color-danger);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }

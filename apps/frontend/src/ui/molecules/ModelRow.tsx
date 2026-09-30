@@ -1,5 +1,7 @@
+import { formatSize } from '../../format/display';
 import { ActionButton } from '../atoms/ActionButton';
 import { StatusPill } from '../atoms/StatusPill';
+import { TruncatedText } from '../atoms/TruncatedText';
 import type { CatalogModel } from '../../types/api';
 import styles from './ModelRow.module.css';
 
@@ -11,14 +13,6 @@ export interface ModelRowProps {
   readonly action: ModelDecision | null;
   readonly onAllow: (model: CatalogModel) => void;
   readonly onDeny: (model: CatalogModel) => void;
-}
-
-function formatSize(bytes: number | null): string | null {
-  if (bytes === null) {
-    return null;
-  }
-
-  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
 /** Discovered scope of a model: provider, family and size when the provider reports them. */
@@ -36,8 +30,8 @@ export function ModelRow({ model, action, onAllow, onDeny }: ModelRowProps) {
   return (
     <tr className={styles.row}>
       <th className={styles.identity} scope="row">
-        <code className={styles.id}>{model.namespacedId}</code>
-        <span className={styles.name}>{model.displayName}</span>
+        <TruncatedText element="code" className={styles.id} value={model.namespacedId} />
+        <TruncatedText className={styles.name} value={model.displayName} />
       </th>
 
       <td className={styles.cell}>{model.namespace}</td>

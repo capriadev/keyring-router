@@ -1,7 +1,8 @@
 .frame {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  /* The frame breathes between its own rows; the screens keep their tighter rhythm inside main. */
+  gap: var(--space-xl);
   max-width: var(--layout-max-width);
   margin: 0 auto;
   padding: var(--space-xl);
@@ -35,6 +36,7 @@
 
 .link {
   font-size: var(--font-size-sm);
+  transition: color var(--duration-quick);
 }
 
 .link:hover {
@@ -61,6 +63,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
+}
+
+/*
+ * The badge changes its words while the panel reads the gateway, so its slot is reserved: the control
+ * beside it must not slide sideways when the label goes from 'Consultando' to 'activo'.
+ */
+.status {
+  display: flex;
+  align-items: center;
+  min-width: var(--layout-status-min-width);
 }
 
 .endpoint {

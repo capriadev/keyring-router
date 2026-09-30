@@ -7,6 +7,9 @@
   --color-muted: #a7afb5;
   --color-border: #2a2f34;
   --color-border-strong: #3a4147;
+  /* A control boundary carries information, so it is lighter than a separator: 3:1 against the surface. */
+  --color-border-control: #656c72;
+  --color-border-control-hover: #8d949a;
 
   /* color: accent and state */
   --color-accent: #b6f36b;
@@ -34,6 +37,8 @@
   --line-height-tight: 1.25;
   --line-height-normal: 1.5;
   --letter-spacing-wide: 0.02em;
+  /* Every count in the panel is written with figures of the same width, so digits line up. */
+  --font-variant-numeric: tabular-nums;
 
   /* spacing */
   --space-xs: 0.25rem;
@@ -55,9 +60,18 @@
   --focus-ring-offset: 2px;
   --focus-ring-color: var(--color-accent);
 
+  /* motion: a color fade on controls, and the duration a reader who asks for less motion gets */
+  --duration-quick: 120ms;
+  --duration-none: 0.01ms;
+
   /* layout */
   --layout-max-width: 68rem;
   --layout-column-min: 22rem;
   --layout-prose-width: 32rem;
+  /* Reserved space: the boxes that must not move the screen when the data arrives. */
+  --layout-value-max-width: 20rem;
+  --layout-pill-min-width: 5.5rem;
+  --layout-status-min-width: 11rem;
+  --layout-data-min-height: 8rem;
 }
 

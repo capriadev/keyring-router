@@ -18,7 +18,7 @@ export function ConfigurationPanel() {
     >
       <MetaList
         items={[
-          { label: 'URL base del panel', value: API_BASE_URL, mono: true },
+          { label: 'URL base del panel', value: API_BASE_URL, mono: true, truncate: true },
           { label: 'Puerto del gateway', value: 'No publicado por el gateway' },
           { label: 'Base de datos', value: 'No publicada por el gateway' },
         ]}

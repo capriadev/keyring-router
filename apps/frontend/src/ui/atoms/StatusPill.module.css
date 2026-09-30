@@ -1,7 +1,10 @@
 .pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-xs);
+  /* The width is reserved: 'Validada' and 'Sin validar' occupy the same box, so a state change moves no column. */
+  min-width: var(--layout-pill-min-width);
   border: var(--border-width-thin) solid var(--color-border);
   border-radius: var(--radius-pill);
   padding: var(--space-xs) var(--space-sm);

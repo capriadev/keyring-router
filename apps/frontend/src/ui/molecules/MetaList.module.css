@@ -22,7 +22,10 @@
 .value {
   margin: 0;
   font-size: var(--font-size-sm);
-  word-break: break-all;
+  /* Counts read straight down: figures share a width, so a column of numbers does not zigzag. */
+  font-variant-numeric: var(--font-variant-numeric);
+  /* A url breaks before it overflows; prose is left alone. */
+  overflow-wrap: break-word;
 }
 
 .mono {

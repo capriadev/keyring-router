@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ActionButton } from '../atoms/ActionButton';
 import { StateNote } from './StateNote';
+import styles from './ResourceState.module.css';
 
 export interface ResourceStateProps {
   /** Reading in flight. */
@@ -26,6 +27,9 @@ export interface ResourceStateProps {
  * nothing when the panel has rows, so the table is the only thing left on screen. A failure always
  * offers the retry; an empty state never does, because retrying solves nothing there: it offers the
  * one action that would fill it, if the panel has a concrete one.
+ *
+ * Whatever it shows, it shows it inside the space its data would occupy: the region has the reserved
+ * height of the table that is coming, so the rows replace the note without pushing the page down.
  */
 export function ResourceState({
   loading,
@@ -42,45 +46,51 @@ export function ResourceState({
 }: ResourceStateProps) {
   const retry = <ActionButton label={retryLabel} onClick={onRetry} />;
 
-  if (count === null && loading) {
-    return <StateNote tone="neutral" title={loadingText} detail="Una sola lectura del gateway; no hace falta recargar." />;
+  function state(): ReactNode | null {
+    if (count === null && loading) {
+      return <StateNote tone="neutral" title={loadingText} detail="Una sola lectura del gateway; no hace falta recargar." />;
+    }
+
+    if (count === null) {
+      return (
+        <StateNote
+          tone="danger"
+          title={failureTitle}
+          detail={error ?? 'El gateway no respondio a la lectura.'}
+          nextStep="Verifica que el gateway este corriendo y vuelve a intentarlo."
+          action={retry}
+        />
+      );
+    }
+
+    if (error !== null) {
+      return (
+        <StateNote
+          tone="warning"
+          title="La ultima lectura fallo"
+          detail={error}
+          nextStep="Lo que ves es la ultima lectura disponible; reintenta para actualizarla."
+          action={retry}
+        />
+      );
+    }
+
+    if (count === 0) {
+      return (
+        <StateNote
+          tone="neutral"
+          title={emptyTitle}
+          detail={emptyDetail}
+          nextStep={emptyNextStep}
+          action={emptyAction}
+        />
+      );
+    }
+
+    return null;
   }
 
-  if (count === null) {
-    return (
-      <StateNote
-        tone="danger"
-        title={failureTitle}
-        detail={error ?? 'El gateway no respondio a la lectura.'}
-        nextStep="Verifica que el gateway este corriendo y vuelve a intentarlo."
-        action={retry}
-      />
-    );
-  }
+  const shown = state();
 
-  if (error !== null) {
-    return (
-      <StateNote
-        tone="warning"
-        title="La ultima lectura fallo"
-        detail={error}
-        nextStep="Lo que ves es la ultima lectura disponible; reintenta para actualizarla."
-        action={retry}
-      />
-    );
-  }
-
-  if (count === 0) {
-    return (
-      <StateNote
-        tone="neutral"
-        title={emptyTitle}
-        detail={emptyDetail}
-        nextStep={emptyNextStep}
-        action={emptyAction}
-      />
-    );
-  }
-
-  return null;
+  return shown === null ? null : <div className={styles.reserved}>{shown}</div>;
 }

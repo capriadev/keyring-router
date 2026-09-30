@@ -1,6 +1,7 @@
 'use client';
 
 import { CopyButton } from './CopyButton';
+import { TruncatedText } from '../atoms/TruncatedText';
 import type { ExposedModel } from '../../types/api';
 import styles from './ExposedModelRow.module.css';
 
@@ -16,14 +17,14 @@ export function ExposedModelRow({ model }: ExposedModelRowProps) {
   return (
     <tr className={styles.row}>
       <th className={styles.identity} scope="row">
-        <code className={styles.id}>{model.namespacedId}</code>
-        <span className={styles.name}>{model.displayName}</span>
+        <TruncatedText element="code" className={styles.id} value={model.namespacedId} />
+        <TruncatedText className={styles.name} value={model.displayName} />
       </th>
 
       <td className={styles.cell}>{model.providerId}</td>
 
       <td className={styles.cell}>
-        <code className={styles.providerModel}>{model.providerModelId}</code>
+        <TruncatedText element="code" className={styles.providerModel} value={model.providerModelId} />
       </td>
 
       <td className={styles.cell}>

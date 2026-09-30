@@ -189,7 +189,12 @@ export function CredentialForm() {
           )}
 
           {kinds.length === 1 && effectiveKind !== null && (
-            <p className={styles.fact}>Autenticacion: {AUTH_KIND_LABELS[effectiveKind]}</p>
+            <StateNote
+              tone="neutral"
+              title="Autenticacion"
+              detail={AUTH_KIND_LABELS[effectiveKind]}
+              announce="none"
+            />
           )}
 
           <TextField

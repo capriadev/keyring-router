@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { describeSecretProblem } from '../../config/secrets';
+import { formatCount, formatTimestamp } from '../../format/display';
 import { SECRET_MAX_LENGTH, type Credential } from '../../types/api';
 import { ActionButton } from '../atoms/ActionButton';
 import { StatusPill, type StatusTone } from '../atoms/StatusPill';
 import { TextField } from '../atoms/TextField';
+import { TruncatedText } from '../atoms/TruncatedText';
 import { DestructiveConfirm } from './DestructiveConfirm';
 import { StateNote } from './StateNote';
 import styles from './CredentialRow.module.css';
@@ -22,12 +24,6 @@ export interface CredentialRowProps {
   readonly onRefresh: (credential: Credential) => void;
   /** Sends the new secret once, after the confirmation. Resolves false when the gateway refused it. */
   readonly onRotate: (credential: Credential, secret: string) => Promise<boolean>;
-}
-
-const timestampFormat = new Intl.DateTimeFormat('es', { dateStyle: 'short', timeStyle: 'short' });
-
-function formatTimestamp(value: number | null): string {
-  return value === null ? 'nunca' : timestampFormat.format(value);
 }
 
 /** What is known about the stored secret. The secret itself is never part of the shape or the screen. */
@@ -103,7 +99,7 @@ export function CredentialRow({
     <tr className={styles.row}>
       <th className={styles.identity} scope="row">
         <span className={styles.namespace}>{credential.namespace}</span>
-        <code className={styles.baseUrl}>{credential.baseUrl}</code>
+        <TruncatedText element="code" className={styles.baseUrl} value={credential.baseUrl} />
       </th>
 
       <td className={styles.cell}>{credential.providerId}</td>
@@ -116,8 +112,8 @@ export function CredentialRow({
             Sin datos: no se pudo leer el catalogo. Reintenta con Actualizar datos.
           </span>
         ) : (
-          <span>
-            {catalog.discovered} descubiertos / {catalog.exposed} expuestos
+          <span className={styles.counts}>
+            {formatCount(catalog.discovered)} descubiertos / {formatCount(catalog.exposed)} expuestos
           </span>
         )}
         <span className={styles.muted}>Ultimo refresh: {formatTimestamp(credential.lastRefreshAt)}</span>

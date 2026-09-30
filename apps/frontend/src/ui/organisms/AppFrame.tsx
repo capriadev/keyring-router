@@ -7,6 +7,7 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { API_BASE_URL } from '../../services/api/client';
 import { ActionButton } from '../atoms/ActionButton';
 import { StatusPill, type StatusTone } from '../atoms/StatusPill';
+import { TruncatedText } from '../atoms/TruncatedText';
 import { StateNote } from '../molecules/StateNote';
 import styles from './AppFrame.module.css';
 
@@ -61,13 +62,16 @@ export function AppFrame({ children }: AppFrameProps) {
         </nav>
 
         <div className={styles.gateway}>
-          <StatusPill label={gateway.label} tone={gateway.tone} />
+          <span className={styles.status}>
+            <StatusPill label={gateway.label} tone={gateway.tone} />
+          </span>
           <ActionButton label="Actualizar datos" pending={store.loading} onClick={store.refreshAll} />
         </div>
       </header>
 
       <p className={styles.endpoint}>
-        Este panel consulta <code className={styles.url}>{API_BASE_URL}</code>
+        Este panel consulta{' '}
+        <TruncatedText element="code" className={styles.url} value={API_BASE_URL} />
       </p>
 
       {store.actionError !== null && (

@@ -28,6 +28,7 @@ body {
 
 a {
   color: var(--color-accent);
+  transition: color var(--duration-quick);
 }
 
 a:hover {
@@ -36,4 +37,19 @@ a:hover {
 
 a:active {
   color: var(--color-accent-pressed);
+}
+
+/*
+ * Motion is decoration in this panel: every change of state is also a color, a border, a label or a
+ * role, so a reader who asks for less motion loses the fade and nothing else. The guard is global
+ * because it has to reach a transition written by any component, present or future.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: var(--duration-none) !important;
+    animation-duration: var(--duration-none) !important;
+    animation-iteration-count: 1 !important;
+  }
 }

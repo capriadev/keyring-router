@@ -24,7 +24,7 @@ export function DataTable({ caption, columns, children }: DataTableProps) {
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className={styles.body}>{children}</tbody>
       </table>
     </div>
   );

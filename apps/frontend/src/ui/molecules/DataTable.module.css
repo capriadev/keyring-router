@@ -1,5 +1,7 @@
 .wrap {
   overflow-x: auto;
+  /* The region keeps its height while the panel still shows a note, so the rows do not push the page down. */
+  min-height: var(--layout-data-min-height);
 }
 
 .table {
@@ -31,4 +33,14 @@
 
 .headCell:last-child {
   padding-right: 0;
+}
+
+/* The last cell of a row lines up with the last header, which carries no trailing padding. */
+.body > tr > :last-child {
+  padding-right: 0;
+}
+
+/* The table ends at its last row: no rule is left hanging under it. */
+.body > tr:last-child {
+  border-bottom: none;
 }

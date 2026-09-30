@@ -15,7 +15,7 @@
 
 .input {
   width: 100%;
-  border: var(--border-width-thin) solid var(--color-border);
+  border: var(--border-width-thin) solid var(--color-border-control);
   border-radius: var(--radius-sm);
   background: var(--color-surface-inset);
   color: var(--color-content);
@@ -23,6 +23,8 @@
   font-family: var(--font-body);
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
+  /* Color only: the border is the state, the fade is how it gets there. */
+  transition: border-color var(--duration-quick);
 }
 
 .input::placeholder {
@@ -30,7 +32,7 @@
 }
 
 .input:hover:enabled {
-  border-color: var(--color-border-strong);
+  border-color: var(--color-border-control-hover);
 }
 
 .input:focus {

@@ -1,0 +1,12 @@
+/*
+ * The box is capped, not the text: the value keeps every character, and what falls outside the cap is
+ * replaced by the ellipsis and offered again in the tooltip. The cap is what stops a long identifier
+ * from widening its column, so a table never grows a horizontal scrollbar because of one model name.
+ */
+.truncated {
+  display: block;
+  max-width: var(--layout-value-max-width);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
