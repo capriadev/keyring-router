@@ -13,11 +13,14 @@ const CLAUDE_BODY = {
   messages: [{ role: 'user', content: 'hola' }],
 };
 
-/** One character per class the rule refuses, named so a failure says which class was not covered. */
+/** One character per family the rule refuses, named so a failure says which family was not covered. */
 const NON_PRINTABLE: Readonly<Record<string, string>> = {
   'a control character': '\n',
   'a bidirectional override': '\u202e',
   'a zero width space': '\u200b',
+  'a private use character': '\ue000',
+  'an unassigned code point': '\u0378',
+  'a lone surrogate': '\ud800',
   'a line separator': '\u2028',
   'a paragraph separator': '\u2029',
 };
@@ -26,6 +29,12 @@ describe('the model id of a v1 chat request', () => {
   it('accepts an identifier as the catalog declares it, on both facades', () => {
     assert.equal(openAiChatBodySchema.safeParse(OPENAI_BODY).success, true);
     assert.equal(claudeMessagesBodySchema.safeParse(CLAUDE_BODY).success, true);
+  });
+
+  it('accepts an identifier with a printable space, which the rule leaves alone on purpose', () => {
+    const spaced = { ...OPENAI_BODY, model: 'local-main/mi modelo' };
+
+    assert.equal(openAiChatBodySchema.safeParse(spaced).success, true);
   });
 
   for (const [what, character] of Object.entries(NON_PRINTABLE)) {

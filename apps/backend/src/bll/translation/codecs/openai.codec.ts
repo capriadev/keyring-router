@@ -12,7 +12,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts } from '../content.js';
 import { placeParameters, topLevelPlacement } from '../parameters.js';
-import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readText } from '../payload.js';
+import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 
@@ -105,12 +105,13 @@ function toOpenAiTool(tool: ChatToolDefinition): Readonly<Record<string, unknown
 
 function decodeResponse(payload: unknown): ChatResponse {
   const record = asRecord(payload, 'the openai response');
+  const choices = record.choices;
 
-  if (!Array.isArray(record.choices)) {
+  if (!Array.isArray(choices)) {
     throw new TranslationError('invalid_frame', 'the openai response does not carry a choices array');
   }
 
-  const choice = readFirst(record, 'choices');
+  const choice = firstRecord(choices, 'choices');
   const message = choice !== null && isRecord(choice.message) ? choice.message : null;
 
   return {

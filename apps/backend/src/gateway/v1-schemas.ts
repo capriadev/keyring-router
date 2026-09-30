@@ -9,17 +9,18 @@ import { z } from 'zod';
 
 /**
  * A model id is an identifier the catalog knows. The length bound is what the contract asked for; the
- * character rule refuses every non-printable character, because the router interpolates this id into its
- * line and an invisible one changes how that line reads. `Cc` are the control characters, `Cf` the format
- * ones such as a bidirectional override, `Zl` and `Zp` the line and paragraph separators. Spec 019, which
- * widened what spec 018 left as `Cc` only, after the audit of 018 measured a format character reaching a
- * resolved line.
+ * character rule refuses every character of the Unicode control categories (`Cc`, `Cf`, `Co`, `Cs`, `Cn`)
+ * and the two separators (`Zl`, `Zp`), because the router interpolates this id into its line and an
+ * invisible one changes how that line reads. A printable space stays accepted on purpose: it is not
+ * invisible, and refusing it could reject an identifier a provider declared. Specs 018, 019 and 020, the
+ * last of which widened this to the whole `C` group after the audit of 019 measured a private use
+ * character reaching a resolved line.
  */
 const modelSchema = z
   .string()
   .min(1)
   .max(256)
-  .regex(/^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+$/u, 'a model id must not carry control, format or separator characters');
+  .regex(/^[^\p{C}\p{Zl}\p{Zp}]+$/u, 'a model id must not carry a control, format, private use, surrogate or separator character');
 
 const openAiContentPartSchema = z.looseObject({
   type: z.string().min(1),

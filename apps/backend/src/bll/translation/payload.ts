@@ -110,13 +110,38 @@ function parseFrameText(text: string, report?: FrameReport): JsonRecord | null {
 }
 
 /**
+ * The first element of an array that holds a record, reporting the element it cannot read. The array is
+ * handed over already read, so no caller reads a field twice: the audit of spec 019 measured that the
+ * double read spec 018 fixed in one place was alive in three callers. Spec 020.
+ */
+export function firstRecord(
+  items: readonly unknown[],
+  field: FrameField,
+  report?: FrameReport,
+): JsonRecord | null {
+  const [first] = items;
+
+  if (first === undefined) {
+    return null;
+  }
+
+  if (!isRecord(first)) {
+    report?.('frame_dropped', { reason: 'unexpected_field_shape', field, shape: shapeOf(first) });
+
+    return null;
+  }
+
+  return first;
+}
+
+/**
  * Reads the first element of an array field when it holds a record. An absent field, or an empty array,
  * carries nothing for the client and says nothing; a field that is present with a shape the codec does
  * not model is a frame it could not read, and is reported as such. Spec 016.
  *
  * The field is read once: the audit of spec 018 measured that reading it twice let a value that answers
- * differently on each read decide the outcome, which is the same defect spec 018 fixed one function away.
- * Spec 019.
+ * differently on each read decide the outcome, and the audit of spec 019 measured the same shape in three
+ * callers, which spec 020 fixed by handing the array over instead of the field name. Specs 019 and 020.
  */
 export function readFirst(source: JsonRecord, key: FrameField, report?: FrameReport): JsonRecord | null {
   const value = source[key];
@@ -131,19 +156,7 @@ export function readFirst(source: JsonRecord, key: FrameField, report?: FrameRep
     return null;
   }
 
-  const [first] = value;
-
-  if (first === undefined) {
-    return null;
-  }
-
-  if (!isRecord(first)) {
-    report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(first) });
-
-    return null;
-  }
-
-  return first;
+  return firstRecord(value, key, report);
 }
 
 /** Reads an object field. Absent carries nothing; present with another shape is a drop. */

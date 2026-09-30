@@ -206,12 +206,13 @@ function claudeUsage(value: unknown): ChatUsage | null {
 
 function decodeResponse(payload: unknown): ChatResponse {
   const record = asRecord(payload, 'the claude response');
+  const content = record.content;
 
-  if (!Array.isArray(record.content)) {
+  if (!Array.isArray(content)) {
     throw new TranslationError('invalid_frame', 'the claude response does not carry a content array');
   }
 
-  const blocks = readItems(record, 'content').filter(isRecord);
+  const blocks = content.filter(isRecord);
 
   return {
     text: blocks

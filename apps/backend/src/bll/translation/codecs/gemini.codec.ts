@@ -13,7 +13,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts, isRemoteUrl, parseToolArguments, readDataUrl, stringifyToolArguments } from '../content.js';
 import { geminiPlacement, placeParameters } from '../parameters.js';
-import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readRecordArray, readText } from '../payload.js';
+import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readRecordArray, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 
@@ -268,15 +268,16 @@ function readToolCalls(parts: readonly Readonly<Record<string, unknown>>[]): rea
 
 function decodeResponse(payload: unknown): ChatResponse {
   const record = asRecord(payload, 'the gemini response');
+  const candidates = record.candidates;
 
-  if (record.candidates !== undefined && !Array.isArray(record.candidates)) {
+  if (candidates !== undefined && !Array.isArray(candidates)) {
     throw new TranslationError(
       'invalid_frame',
       'the gemini response carries a candidates field that is not an array',
     );
   }
 
-  const candidate = readFirst(record, 'candidates');
+  const candidate = candidates === undefined ? null : firstRecord(candidates, 'candidates');
   const parts = readParts(candidate);
 
   return {

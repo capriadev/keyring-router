@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { FrameDrop, FrameReport } from '../../types/chat.js';
+import { claudeCodec } from './codecs/claude.codec.js';
 import { geminiCodec } from './codecs/gemini.codec.js';
 import { openAiCodec } from './codecs/openai.codec.js';
 import { countFrameDrops } from './frame-report.js';
@@ -162,6 +163,50 @@ describe('the translator that reads the frames', () => {
 
     assert.deepEqual(openAiCodec.decodeChunk(42, report), []);
     assert.deepEqual(drops, [{ reason: 'not_an_object', shape: 'number' }]);
+  });
+});
+
+describe('a response field the codec checks and then reads', () => {
+  it('is read once by the openai response decoder', () => {
+    let reads = 0;
+    const record = {
+      get choices(): unknown {
+        reads += 1;
+
+        return reads === 1 ? [] : [{ message: { content: 'hola' } }];
+      },
+    };
+
+    assert.equal(openAiCodec.decodeResponse(record).text, '');
+    assert.equal(reads, 1, 'choices must be read once');
+  });
+
+  it('is read once by the gemini response decoder', () => {
+    let reads = 0;
+    const record = {
+      get candidates(): unknown {
+        reads += 1;
+
+        return reads === 1 ? [] : [{ content: { parts: [{ text: 'hola' }] } }];
+      },
+    };
+
+    assert.equal(geminiCodec.decodeResponse(record).text, '');
+    assert.equal(reads, 1, 'candidates must be read once');
+  });
+
+  it('is read once by the claude response decoder', () => {
+    let reads = 0;
+    const record = {
+      get content(): unknown {
+        reads += 1;
+
+        return reads === 1 ? [] : [{ type: 'text', text: 'hola' }];
+      },
+    };
+
+    assert.equal(claudeCodec.decodeResponse(record).text, '');
+    assert.equal(reads, 1, 'content must be read once');
   });
 });
 
