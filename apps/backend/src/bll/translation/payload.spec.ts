@@ -119,6 +119,22 @@ describe('a field that is present with a shape the codec does not model', () => 
     assert.deepEqual(partly, [{ delta: 'hola' }]);
   });
 
+  it('reads the field once, so a value that answers differently on each read cannot change the outcome', () => {
+    const { report, drops } = recorder();
+    let reads = 0;
+    const frame = {
+      get choices(): unknown {
+        reads += 1;
+
+        return reads === 1 ? [] : [{ delta: { content: 'hola' } }];
+      },
+    };
+
+    assert.deepEqual(openAiCodec.decodeChunk(frame, report), []);
+    assert.equal(reads, 1, 'the field must be read once');
+    assert.deepEqual(drops, []);
+  });
+
   it('is not reported when the field is absent or the array is empty, because that carries nothing', () => {
     const { report, drops } = recorder();
 

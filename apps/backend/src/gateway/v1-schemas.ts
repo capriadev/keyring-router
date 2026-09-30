@@ -9,14 +9,17 @@ import { z } from 'zod';
 
 /**
  * A model id is an identifier the catalog knows. The length bound is what the contract asked for; the
- * character rule is what keeps a value from forging a log line, because the router interpolates this id
- * into its line and a break inside it would start a second one. Spec 018, finding F2-4.
+ * character rule refuses every non-printable character, because the router interpolates this id into its
+ * line and an invisible one changes how that line reads. `Cc` are the control characters, `Cf` the format
+ * ones such as a bidirectional override, `Zl` and `Zp` the line and paragraph separators. Spec 019, which
+ * widened what spec 018 left as `Cc` only, after the audit of 018 measured a format character reaching a
+ * resolved line.
  */
 const modelSchema = z
   .string()
   .min(1)
   .max(256)
-  .regex(/^[^\p{Cc}]+$/u, 'a model id must not carry control characters');
+  .regex(/^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+$/u, 'a model id must not carry control, format or separator characters');
 
 const openAiContentPartSchema = z.looseObject({
   type: z.string().min(1),

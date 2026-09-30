@@ -113,6 +113,10 @@ function parseFrameText(text: string, report?: FrameReport): JsonRecord | null {
  * Reads the first element of an array field when it holds a record. An absent field, or an empty array,
  * carries nothing for the client and says nothing; a field that is present with a shape the codec does
  * not model is a frame it could not read, and is reported as such. Spec 016.
+ *
+ * The field is read once: the audit of spec 018 measured that reading it twice let a value that answers
+ * differently on each read decide the outcome, which is the same defect spec 018 fixed one function away.
+ * Spec 019.
  */
 export function readFirst(source: JsonRecord, key: FrameField, report?: FrameReport): JsonRecord | null {
   const value = source[key];
@@ -121,17 +125,17 @@ export function readFirst(source: JsonRecord, key: FrameField, report?: FrameRep
     return null;
   }
 
-  const items = readItems(source, key);
-
-  if (items.length === 0) {
-    if (!Array.isArray(value)) {
-      report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(value) });
-    }
+  if (!Array.isArray(value)) {
+    report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(value) });
 
     return null;
   }
 
-  const [first] = items;
+  const [first] = value;
+
+  if (first === undefined) {
+    return null;
+  }
 
   if (!isRecord(first)) {
     report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(first) });
