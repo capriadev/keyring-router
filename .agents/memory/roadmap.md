@@ -18,7 +18,7 @@ A self-hosted local gateway that a user installs on Windows, that starts on its 
 | M6 | Windows startup service | 007 | done (install pending on the user machine) |
 | M7 | Routing: rotation, fallback, quota and lockout | 004 | next |
 | M8 | Shared API contracts: one source for the wire shapes the UI and the API share | 010, 012, 013 | done |
-| M9 | UI: minimalist, micro detailed, complete flow | 008 | implemented 2026-09-30, independent audit owed |
+| M9 | UI: minimalist, micro detailed, complete flow | 008 | implemented 2026-09-30; audit done, 7 of 10 criteria verified and 3 need a browser |
 | M10 | Live provider discovery for the 42 catalogued providers that declare no static models | 011 | pending |
 
 ## Order note

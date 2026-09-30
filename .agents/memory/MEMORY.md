@@ -11,14 +11,14 @@ Update at session close. This is not a changelog: it is the state of the work.
 -->
 
 ## Last session
-- M1 to M6 and M8 complete; the two audit passes over specs 010 and 012 are closed and spec 013 keeps the residue that needs a decision, now including the mirrored secret bounds (N-6).
-- M9 implemented: the three passes of spec 008 are committed and the gate is green; the independent audit is owed, and no self review was substituted for it.
+- M1 to M6 and M8 complete; the audits of specs 010 and 012 are closed and spec 013 keeps their residue, now including the mirrored secret bounds (N-6) and a mid stream failure that is not reported as a provider failure (N-7).
+- M9 implemented and audited: seven of its ten criteria were verified by an independent lane and three need a browser. Spec 014 fixed H-B7 and H-B8, and its audit reproduced the red run exactly as written down. The residue of both audits is spec 015.
 
 ## Next up
-- Spec 014 fixed the two findings of 013 (a client abort reported as an unreachable provider, a dropped frame that vanished) with tests proved red before green; its audit, and the one owed for M9, are blocked on authentication.
+- Spec 015 holds the residue of the two audits: the shape of the `FrameReport` detail (H-2), the frames two codecs still drop in silence (H-4), the log wiring no test asserts (H-3), the space the layout shift reserve does not cover (H4), three empty folders that need the user's word to remove (H7), and the browser walk.
 - M7 routing (spec 004) is blocked on a decision rather than on code: nothing defines how a client asks for a model that several credentials can serve, and neither the priority nor the fallback chain has anywhere to live.
-- Specs 008 and 014 close, and their lines leave `features.md`, only after their audits run.
-- User only: re-authenticate Cline so the lanes work again (both audits are waiting on it), `kr service install` (elevation), the first run against a real provider key, the remote URL update (GitHub still answers `This repository moved` although the push succeeds), then merge into `main`.
+- Spec 008 closes, and its line leaves `features.md`, only when its three browser-dependent criteria are walked with the panel open.
+- User only: the browser walk of the panel, `kr service install` (elevation), the first run against a real provider key, the remote URL update, then merge into `main`.
 
 ## Open decisions (unresolved, blocking or not)
 - Credential deletion: a scoped policy rule currently blocks the delete through the foreign key; decide it in its own spec (full catalog in `architecture.md`).
