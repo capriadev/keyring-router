@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ChatFormat, ChatRequest, TranslateRequestOptions } from '../../types/chat.js';
+import type { ChatFormat, ChatRequest, FrameDrop, TranslateRequestOptions } from '../../types/chat.js';
 import { createPairTranslator, createTranslationRegistry, TranslationError, translatorKey } from './index.js';
 import {
   ARGUMENT_FRAGMENTS,
@@ -333,3 +333,22 @@ describe('catalog defaults', () => {
     assert.deepEqual(translated.warnings, [warning('topK')]);
   });
 });
+/**
+ * The link the audit of spec 016 found unasserted: `pairs.ts` is what carries a report from the
+ * translator the service actually holds down to the codec that drops the frame. Emptying that forward
+ * left the whole suite green, so this case is the only thing that guards it. Spec 017.
+ */
+describe('the pair the service actually receives', () => {
+  it('forwards the report, so a frame the codec drops is reported in production and not only over a double', () => {
+    const translator = createPairTranslator('openai', 'openai');
+    const drops: FrameDrop[] = [];
+
+    const chunks = translator.translateChunk(42, (_code, drop) => {
+      drops.push(drop);
+    });
+
+    assert.deepEqual(chunks, []);
+    assert.deepEqual(drops, [{ reason: 'not_an_object', shape: 'number' }]);
+  });
+});
+

@@ -99,7 +99,7 @@ describe('the line the gateway writes for the frames it dropped', () => {
     // The frame it could read still reached the client, and the two it could not became one warning.
     assert.deepEqual(chunks, [{ delta: 'hola' }]);
     assert.deepEqual(capture.lines, [
-      'route request=req-1 outcome=frame_dropped frames=2 reasons=not_an_object,unexpected_field_shape',
+      'route request=req-1 outcome=frame_dropped drops=2 reasons=not_an_object,unexpected_field_shape',
     ]);
   });
 

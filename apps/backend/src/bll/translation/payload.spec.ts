@@ -156,7 +156,7 @@ describe('the count of one request', () => {
     assert.equal(drops.line('abc'), null);
   });
 
-  it('writes one line with the request, the stable code, the count and the distinct reasons', () => {
+  it('writes one line with the request, the stable code, the number of drops and the distinct reasons', () => {
     const drops = countFrameDrops();
 
     drops.report('frame_dropped', { reason: 'not_an_object', shape: 'number' });
@@ -165,8 +165,30 @@ describe('the count of one request', () => {
 
     assert.equal(
       drops.line('abc'),
-      'route request=abc outcome=frame_dropped frames=3 reasons=not_an_object,parsed_not_an_object',
+      'route request=abc outcome=frame_dropped drops=3 reasons=not_an_object,parsed_not_an_object',
     );
     assert.equal(drops.line('abc')?.includes('number'), false);
+  });
+
+  it('counts drops, not frames: one frame with three unreadable parts is three', () => {
+    const { report } = recorder();
+    const drops = countFrameDrops();
+
+    geminiCodec.decodeChunk({ candidates: [{ content: { parts: [1, 2, 3] } }] }, (code, drop) => {
+      report(code, drop);
+      drops.report(code, drop);
+    });
+
+    assert.equal(drops.line('req-a'), 'route request=req-a outcome=frame_dropped drops=3 reasons=unexpected_field_shape');
+  });
+
+  it('writes only a reason it knows, even when a forced value reaches the port', () => {
+    const drops = countFrameDrops();
+    const forced = { reason: JSON.stringify({ prompt: 'sk-secret-value' }) } as unknown as FrameDrop;
+
+    drops.report('frame_dropped', forced);
+
+    assert.equal(drops.line('abc'), 'route request=abc outcome=frame_dropped drops=1 reasons=unrecognized');
+    assert.equal(drops.line('abc')?.includes('sk-secret-value'), false);
   });
 });
