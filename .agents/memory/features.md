@@ -1,6 +1,6 @@
 # Features - SDD index
 
-last_id: 16
+last_id: 17
 
 <!--
 One line per feature. Planned features may be registered here without a spec yet (status: pending); a spec is opened when the feature is planned and ready to develop. When a feature is COMPLETE: remove its line here and mark the spec status as completed. SPECS ARE NEVER DELETED - specs/ is a permanent registry, the numbering exists for that. Never reuse an ID; last_id only grows.
@@ -15,3 +15,4 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 #14 Fix: a client abort is not an unreachable provider, and a dropped frame is not silence [spec: 014-fix-abort-and-dropped-frames.md] [status: active]
 #15 Residue of the audits of the interface and of the abort fix - what the two independent passes found that needs a decision or a browser [spec: 015-audit-residue-ui-and-abort.md] [status: active]
 #16 Fix: the drop detail cannot carry provider data, the log is asserted, and a wrong shaped field is not silence [spec: 016-fix-drop-detail-and-codec-fields.md] [status: active]
+#17 Fix: the audit findings of spec 016 - the production link asserted, the log as a last line of defence, and a count named for what it counts [spec: 017-fix-audit-016-findings.md] [status: active]

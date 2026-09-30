@@ -16,6 +16,11 @@ Origin: the two independent audits that ran on 2026-09-30, `run_00007` over spec
 
 ## Open, and each with its reason
 
+- A16-4 (minor), the class "an object frame whose content vanishes in silence" is still open beyond the five fields spec 016 closed. The audit of 016 measured silent paths in `openai.codec.ts:136,142,145` (`delta.content`, `tool_calls`, `finish_reason` in a shape the codec does not model), `gemini.codec.ts:234-240,329,335` (`part.text`, `functionCall`, `finishReason`, `usageMetadata`) and `claude.codec.ts:294,333,339,357` (`content_block.text`, `delta.text`, `partial_json`, `message_delta`), plus the part fields the codec never models (`inlineData`, `executableCode`, unknown fields). Closing them needs the closed `FrameField` widened, which is a decision about how far the reporting reaches.
+- A16-5 (minor), spec 016 describes OpenAI's final chunk as carrying no `choices`, and that is a provider fact no run here can verify: no real provider and no documentation reachable from this environment. What is asserted is the gateway's behaviour in both forms, which is what the wording should say.
+- A16-6 (minor), no test runs socket to SSE to codec to line: `chat.service.spec.ts` doubles both the frame source and the router, and the end to end stub provider only sends healthy frames (`e2e/harness.ts:58,69,147`). A case in the end to end run with one unreadable frame between two readable ones is the honest place to close it, because that is where the socket is real.
+- A16-7 (minor, observation), content fabricated instead of reported: `gemini.codec.ts:245` turns an unreadable `functionCall.name` into an empty string and `content.ts:38` turns absent arguments into `{}`, so a client receives an invented tool call it cannot tell from a real one. It is the opposite of silence and still a lie.
+
 - H4 (minor), the layout shift half of spec 008 criterion 8: the reserved space covers the table region, but the search field and the closing note mount only when rows exist, and the reservation (8rem) is smaller than a populated table. The half that needs no browser could be improved; the criterion cannot be closed without one.
 - H6 (minor), the before and after evidence of passes 1 and 2 is narrative; only pass 3 left a reproducible measurement. Making the first two reproducible means re-measuring work already merged, with no defect behind it.
 - H7 (minor), three empty folders held by `.gitkeep` (`components`, `events`, `theme/presets`) that nothing uses. Removing them deletes files, which this project does not do without the user's word, so it waits for one.
@@ -30,6 +35,7 @@ Spec 008 criteria 3, 4 and 8 keep structural evidence only, and the audit repeat
 - [ ] Every item above is either fixed with a test, or registered here with the decision it needs.
 - [x] A new spec decides and implements the `FrameReport` detail shape (H-2), and the frames the codecs drop (H-4). Spec 016, implemented on 2026-09-30: the detail is a closed union of reasons, fields and shapes that the compiler enforces, and the two codecs report a field that is present with a shape they do not model while a field that is absent says nothing.
 - [ ] Removing the three empty folders (H7) happens only with the user's confirmation, because it deletes files.
+- [ ] A16-4, A16-5, A16-6 and A16-7 of the audit of spec 016 are each fixed by the spec that owns their decision, or decided against in writing.
 - [ ] The browser-dependent checks of spec 008 are walked by a person with the panel running, and the result is written in spec 008.
 - [ ] Specs 008 and 014 close only when their own criteria say so, not before.
 

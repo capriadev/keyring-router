@@ -17,6 +17,8 @@ Close the three gaps that audit left in the fix of H-B7 and H-B8, none of them a
 
 The port now takes a `FrameDrop`: a reason from a closed union (`not_an_object`, `parsed_not_an_object`, `unexpected_field_shape`), the field it concerns from a closed union (`choices`, `delta`, `candidates`, `content`, `parts`) and the shape that arrived from a closed union (`array`, `number`, `string`, `boolean`, `null`, `other`). Every value of that shape is written by this repository about a value it inspected; none of them can carry a value from the provider, and the compiler is what enforces it, not a comment.
 
+The audit of this spec measured the limit of that sentence and spec 017 records the correction: the type stops every direct value (five probes fail with `TS2322` and `TS2345`), and it does not stop a codec that types its own parameter with `any`, a value that arrives as `any`, or an explicit cast. The type raises the cost of a leak; what closes it is the runtime check spec 017 added to the log line, which writes `unrecognized` instead of anything it does not recognize.
+
 ### H-3: the log line is asserted where it is written
 
 `payload.spec.ts` asserted the line that `countFrameDrops` builds and nothing asserted that `ChatService` writes it. The claim "asserted, not assumed" was therefore half true, and spec 014 records the correction.
@@ -42,7 +44,7 @@ The rule that separates the two cases, and the decision this spec makes:
 - [x] A test asserts the line `ChatService` writes: one per request, with the request id, the count and the distinct reasons, and never a frame content. `chat.service.spec.ts` consumes a stream of three frames over the real openai codec, asserts the single line `route request=req-1 outcome=frame_dropped frames=2 reasons=not_an_object,unexpected_field_shape`, that the readable frame still reached the client, and that a stream whose frames all read writes nothing.
 - [x] The suites of specs 001 to 015 keep passing, and the end to end run keeps passing. 363 backend tests, 19 command line tests, 17 interface tests, the build of the four workspaces and the 27 case end to end run, all green.
 - [x] Spec 015 ticks H-2, H-3 and H-4 with the commit that closes this one.
-- [ ] An independent audit reproduces every criterion, including the induced red run. Dispatched to an independent lane with this commit; the outcome is ticked when it returns, as spec 014 records its own.
+- [x] An independent audit reproduces every criterion, including the induced red run. RUN on 2026-09-30 (`run_00011`, report in `temp/audit-016-report.md`). It reproduced the compiler probes with five of its own variants, verified criteria 2, 3 and 5 with its own commands and its own red run, confirmed the capture of the log is isolated per process, and refuted the scope of criterion 4: the assertion covers `ChatService` to codec, not the production pair in `pairs.ts`, and emptying that forward left the whole suite green. It also measured that the closed type can be bypassed without a cast and that a payload forced into `reason` reached the line literally. Three findings were fixed in spec 017 the same day (A16-1, A16-2 and A16-3) and four are registered in spec 015 (A16-4, A16-5, A16-6 and A16-7). The claim about the compiler in the design above is corrected with what the audit measured.
 
 ## Risks
 
