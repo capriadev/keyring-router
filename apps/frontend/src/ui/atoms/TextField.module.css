@@ -29,8 +29,17 @@
   color: var(--color-muted);
 }
 
+.input:hover:enabled {
+  border-color: var(--color-border-strong);
+}
+
 .input:focus {
   border-color: var(--color-accent);
+}
+
+/* A pressed field is the one being focused: the pressed border matches the focus border. */
+.input:active:enabled {
+  border-color: var(--color-accent-pressed);
 }
 
 .input:disabled {

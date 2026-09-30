@@ -25,13 +25,23 @@
   line-height: var(--line-height-normal);
 }
 
+.select:hover:enabled {
+  border-color: var(--color-border-strong);
+}
+
 .select:focus {
   border-color: var(--color-accent);
+}
+
+/* A pressed select is the one being focused: the pressed border matches the focus border. */
+.select:active:enabled {
+  border-color: var(--color-accent-pressed);
 }
 
 .select:disabled {
   color: var(--color-muted);
   border-color: var(--color-border);
+  background: var(--color-surface);
   cursor: not-allowed;
 }
 

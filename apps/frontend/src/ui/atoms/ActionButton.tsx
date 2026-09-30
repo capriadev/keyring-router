@@ -1,6 +1,7 @@
+import type { Ref } from 'react';
 import styles from './ActionButton.module.css';
 
-export type ActionButtonVariant = 'primary' | 'secondary';
+export type ActionButtonVariant = 'primary' | 'secondary' | 'danger';
 
 export interface ActionButtonProps {
   readonly label: string;
@@ -11,6 +12,8 @@ export interface ActionButtonProps {
   readonly pending?: boolean;
   readonly disabled?: boolean;
   readonly type?: 'button' | 'submit';
+  /** The destructive confirmation starts the focus on Cancelar, so it needs the node. */
+  readonly ref?: Ref<HTMLButtonElement>;
 }
 
 export function ActionButton({
@@ -20,9 +23,11 @@ export function ActionButton({
   pending = false,
   disabled = false,
   type = 'button',
+  ref,
 }: ActionButtonProps) {
   return (
     <button
+      ref={ref}
       type={type}
       className={`${styles.button} ${styles[variant]}`}
       onClick={onClick}
@@ -33,3 +38,4 @@ export function ActionButton({
     </button>
   );
 }
+

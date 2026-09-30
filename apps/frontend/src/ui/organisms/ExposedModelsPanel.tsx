@@ -3,14 +3,17 @@
 import Link from 'next/link';
 import { useDashboard } from '../../hooks/useDashboard';
 import { API_BASE_URL } from '../../services/api/client';
+import { CopyButton } from '../molecules/CopyButton';
 import { DataTable } from '../molecules/DataTable';
 import { ExposedModelRow } from '../molecules/ExposedModelRow';
 import { MetaList } from '../molecules/MetaList';
 import { ResourceState } from '../molecules/ResourceState';
 import { ScreenSection } from '../molecules/ScreenSection';
-import styles from './ExposedModelsPanel.module.css';
 
 const COLUMNS = ['Identificador', 'Proveedor', 'Modelo del proveedor', 'Acciones'];
+
+/** The endpoint a client points at. Written once: the listing shows it and the copy control takes it. */
+const CLIENT_BASE_URL = `${API_BASE_URL}/v1`;
 
 /**
  * The listing a client can call: the exposed identifiers, ready to copy into a configuration. It is
@@ -33,7 +36,8 @@ export function ExposedModelsPanel() {
         failureTitle="No se pudieron leer los modelos expuestos"
         emptyTitle="Ningun modelo expuesto"
         emptyDetail="La lista esta vacia: hay modelos descubiertos que ninguna regla permite todavia."
-        emptyNextStep="Abre Catalogo y exposicion y usa Permitir en el modelo que quieras servir."
+        emptyNextStep="Usa Permitir en el modelo que quieras servir, en Catalogo y exposicion."
+        emptyAction={<Link href="/catalogo">Ir a Catalogo y exposicion</Link>}
         onRetry={refreshCatalog}
       />
 
@@ -42,7 +46,18 @@ export function ExposedModelsPanel() {
           <MetaList
             items={[
               { label: 'Modelos expuestos', value: String(rows.length) },
-              { label: 'URL base para clientes', value: `${API_BASE_URL}/v1`, mono: true },
+              {
+                label: 'URL base para clientes',
+                value: CLIENT_BASE_URL,
+                mono: true,
+                action: (
+                  <CopyButton
+                    label="Copiar URL base"
+                    value={CLIENT_BASE_URL}
+                    fallbackHint="Selecciona la URL y copiala a mano."
+                  />
+                ),
+              },
             ]}
           />
           <DataTable
@@ -54,12 +69,6 @@ export function ExposedModelsPanel() {
             ))}
           </DataTable>
         </>
-      )}
-
-      {rows !== null && rows.length === 0 && (
-        <p className={styles.action}>
-          <Link href="/catalogo">Ir a Catalogo y exposicion</Link>
-        </p>
       )}
     </ScreenSection>
   );

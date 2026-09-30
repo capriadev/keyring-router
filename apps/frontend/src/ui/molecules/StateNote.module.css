@@ -33,6 +33,7 @@
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
 }
 
 .neutral {

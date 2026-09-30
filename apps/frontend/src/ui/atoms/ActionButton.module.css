@@ -9,6 +9,7 @@
   cursor: pointer;
 }
 
+/* The focus ring itself lives in globals.css, on :focus-visible, and no control removes it. */
 .primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
@@ -18,6 +19,11 @@
 .primary:hover:enabled {
   background: var(--color-accent-strong);
   border-color: var(--color-accent-strong);
+}
+
+.primary:active:enabled {
+  background: var(--color-accent-pressed);
+  border-color: var(--color-accent-pressed);
 }
 
 .secondary {
@@ -31,9 +37,35 @@
   color: var(--color-accent);
 }
 
+.secondary:active:enabled {
+  background: var(--color-surface-inset);
+  border-color: var(--color-accent-pressed);
+  color: var(--color-accent-pressed);
+}
+
+.danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-danger-content);
+}
+
+.danger:hover:enabled {
+  background: var(--color-danger-strong);
+  border-color: var(--color-danger-strong);
+}
+
+.danger:active:enabled {
+  background: var(--color-danger-pressed);
+  border-color: var(--color-danger-pressed);
+}
+
 .button:disabled {
   background: transparent;
   border-color: var(--color-border);
   color: var(--color-muted);
   cursor: not-allowed;
+}
+
+.button[aria-busy='true'] {
+  cursor: progress;
 }

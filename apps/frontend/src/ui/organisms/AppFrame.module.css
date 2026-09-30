@@ -37,10 +37,24 @@
   font-size: var(--font-size-sm);
 }
 
+.link:hover {
+  color: var(--color-accent-strong);
+}
+
+.link:active {
+  color: var(--color-accent-pressed);
+}
+
 .link[aria-current='page'] {
   color: var(--color-content);
   font-weight: var(--font-weight-strong);
   text-decoration: none;
+}
+
+/* The screen a reader is on does not change color when the pointer crosses it: it is not a target. */
+.link[aria-current='page']:hover,
+.link[aria-current='page']:active {
+  color: var(--color-content);
 }
 
 .gateway {

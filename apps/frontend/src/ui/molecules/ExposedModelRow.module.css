@@ -46,12 +46,3 @@
   gap: var(--space-sm);
 }
 
-.copied {
-  color: var(--color-ok);
-  font-size: var(--font-size-xs);
-}
-
-.failed {
-  color: var(--color-danger);
-  font-size: var(--font-size-xs);
-}

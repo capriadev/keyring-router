@@ -6,7 +6,6 @@ import { CredentialRow } from '../molecules/CredentialRow';
 import { DataTable } from '../molecules/DataTable';
 import { ResourceState } from '../molecules/ResourceState';
 import { ScreenSection } from '../molecules/ScreenSection';
-import { StateNote } from '../molecules/StateNote';
 
 interface CatalogCounts {
   readonly discovered: number;
@@ -20,7 +19,7 @@ const COLUMNS = ['Namespace', 'Proveedor', 'Secreto', 'Catalogo', 'Estado', 'Acc
  * can appear in several rows with its own namespace, its own secret and its own discovered catalog.
  */
 export function CredentialsPanel() {
-  const { credentials, catalog, pending, refreshCredentials, validate, refreshCredential } =
+  const { credentials, catalog, pending, refreshCredentials, validate, refreshCredential, rotateSecret } =
     useDashboard();
 
   /** Counted once from the single catalog reading: one row per credential and no call per row. */
@@ -71,19 +70,10 @@ export function CredentialsPanel() {
               action={credentialAction(pending, credential.id)}
               onValidate={validate}
               onRefresh={refreshCredential}
+              onRotate={rotateSecret}
             />
           ))}
         </DataTable>
-      )}
-
-      {credentials.data !== null && credentials.data.length > 0 && (
-        <StateNote
-          tone="neutral"
-          title="Rotar secreto"
-          detail="Cambiar el secreto de una credencial todavia no se puede hacer desde este panel: el gateway ya acepta el cambio, pero la capa de servicios del frontend no lo expone. El boton queda deshabilitado en lugar de fingir que funciona."
-          nextStep="Mientras tanto, usa Validar para confirmar que el secreto guardado sigue sirviendo."
-          announce="none"
-        />
       )}
     </ScreenSection>
   );

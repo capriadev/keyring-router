@@ -28,3 +28,9 @@
 .mono {
   font-family: var(--font-mono);
 }
+
+.action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}

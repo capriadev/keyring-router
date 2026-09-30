@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useDashboard } from '../../hooks/useDashboard';
 import { ResourceState } from '../molecules/ResourceState';
 import { ScreenSection } from '../molecules/ScreenSection';
@@ -26,7 +27,8 @@ export function ProviderErrorsPanel() {
         failureTitle="No se pudieron leer las credenciales"
         emptyTitle="Ninguna credencial reporto errores"
         emptyDetail="Cuando un refresco de catalogo falle, el motivo que devolvio el proveedor aparece en esta lista."
-        emptyNextStep="Refresca el catalogo de una credencial, en Credenciales, para probar su proveedor."
+        emptyNextStep="Refresca el catalogo de una credencial para probar su proveedor."
+        emptyAction={<Link href="/credenciales">Ir a Credenciales</Link>}
         onRetry={refreshCredentials}
       />
 

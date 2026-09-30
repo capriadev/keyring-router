@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ActionButton } from '../atoms/ActionButton';
 import { StateNote } from './StateNote';
 
@@ -13,6 +14,8 @@ export interface ResourceStateProps {
   readonly emptyTitle: string;
   readonly emptyDetail: string;
   readonly emptyNextStep?: string;
+  /** The single control that starts what the empty state asks for. One action, never a menu. */
+  readonly emptyAction?: ReactNode;
   readonly retryLabel?: string;
   readonly onRetry: () => void;
 }
@@ -21,7 +24,8 @@ export interface ResourceStateProps {
  * The honest state of one panel, in one module: loading, failed with nothing to show, failed over a
  * reading that is still on screen (degraded), or empty with the next action spelled out. It renders
  * nothing when the panel has rows, so the table is the only thing left on screen. A failure always
- * offers the retry; an empty state never does, because retrying solves nothing there.
+ * offers the retry; an empty state never does, because retrying solves nothing there: it offers the
+ * one action that would fill it, if the panel has a concrete one.
  */
 export function ResourceState({
   loading,
@@ -32,6 +36,7 @@ export function ResourceState({
   emptyTitle,
   emptyDetail,
   emptyNextStep,
+  emptyAction,
   retryLabel = 'Reintentar',
   onRetry,
 }: ResourceStateProps) {
@@ -66,7 +71,15 @@ export function ResourceState({
   }
 
   if (count === 0) {
-    return <StateNote tone="neutral" title={emptyTitle} detail={emptyDetail} nextStep={emptyNextStep} />;
+    return (
+      <StateNote
+        tone="neutral"
+        title={emptyTitle}
+        detail={emptyDetail}
+        nextStep={emptyNextStep}
+        action={emptyAction}
+      />
+    );
   }
 
   return null;

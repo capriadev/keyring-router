@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { modelAction, useDashboard } from '../../hooks/useDashboard';
 import { ActionButton } from '../atoms/ActionButton';
@@ -72,7 +73,8 @@ export function CatalogPanel() {
         failureTitle="No se pudo leer el catalogo"
         emptyTitle="Sin modelos descubiertos"
         emptyDetail="Ninguna credencial tiene modelos descubiertos todavia: el catalogo se llena al refrescar una credencial contra su proveedor."
-        emptyNextStep="Registra una credencial y usa Refrescar catalogo en Credenciales."
+        emptyNextStep="Registra una credencial y refresca su catalogo desde ahi."
+        emptyAction={<Link href="/credenciales">Ir a Credenciales</Link>}
         onRetry={refreshCatalog}
       />
 

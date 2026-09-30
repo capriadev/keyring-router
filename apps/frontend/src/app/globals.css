@@ -29,3 +29,11 @@ body {
 a {
   color: var(--color-accent);
 }
+
+a:hover {
+  color: var(--color-accent-strong);
+}
+
+a:active {
+  color: var(--color-accent-pressed);
+}

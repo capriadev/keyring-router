@@ -14,6 +14,7 @@ import {
   createCredential,
   listCredentials,
   refreshCredential,
+  rotateCredentialSecret,
   validateCredential,
 } from '../services/api/credentials';
 import { fetchHealth } from '../services/api/health';
@@ -182,6 +183,24 @@ export function GatewayProvider({ children }: GatewayProviderProps) {
   );
 
   /**
+   * Rotation replaces the stored secret. The new value is handed to the service layer inside this call
+   * and is never written to the store: the notice names the credential and the new hint, which is the
+   * same public value the table already shows.
+   */
+  const rotateSecret = useCallback(
+    (credential: Credential, secret: string): Promise<boolean> =>
+      runAction({ action: 'rotate', targetId: credential.id }, async () => {
+        const rotated = await rotateCredentialSecret(credential.id, secret);
+        await readResource(listCredentials, setCredentials);
+
+        return rotated.secretHint === null
+          ? `Secreto de ${rotated.namespace} rotado.`
+          : `Secreto de ${rotated.namespace} rotado: ahora termina en ${rotated.secretHint}.`;
+      }),
+    [runAction],
+  );
+
+  /**
    * Exposing one model is an allow rule scoped to its credential over its exact namespaced id; hiding
    * it again is a deny rule over the same pattern. The gateway evaluates both, never this panel.
    */
@@ -225,6 +244,7 @@ export function GatewayProvider({ children }: GatewayProviderProps) {
     create,
     validate,
     refreshCredential: refreshCredentialById,
+    rotateSecret,
     allow,
     deny,
   };

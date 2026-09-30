@@ -11,10 +11,14 @@
   /* color: accent and state */
   --color-accent: #b6f36b;
   --color-accent-strong: #c9f78f;
+  --color-accent-pressed: #a4de55;
   --color-accent-content: #101214;
   --color-ok: #6bd48a;
   --color-warning: #e8c56a;
   --color-danger: #f2938f;
+  --color-danger-strong: #f7b0ad;
+  --color-danger-pressed: #e07a76;
+  --color-danger-content: #101214;
 
   /* typography */
   --font-body: Arial, sans-serif;

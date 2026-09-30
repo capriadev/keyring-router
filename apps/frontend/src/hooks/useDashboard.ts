@@ -12,7 +12,7 @@ import type {
   ProvidersResponse,
 } from '../types/api';
 
-export type ActionName = 'reload' | 'create' | 'validate' | 'refresh' | 'allow' | 'deny';
+export type ActionName = 'reload' | 'create' | 'validate' | 'refresh' | 'allow' | 'deny' | 'rotate';
 
 /** Single in-flight action: `targetId` is a credential or namespaced model id, null for a full reload. */
 export interface PendingAction {
@@ -60,6 +60,11 @@ export interface DashboardStore {
   readonly create: (input: CredentialInput) => Promise<boolean>;
   readonly validate: (credential: Credential) => Promise<boolean>;
   readonly refreshCredential: (credential: Credential) => Promise<boolean>;
+  /**
+   * Rotates the stored secret: the new value travels to the service layer and is never kept here.
+   * Nothing of the secret survives in the store, and the answer only carries the new hint.
+   */
+  readonly rotateSecret: (credential: Credential, secret: string) => Promise<boolean>;
   readonly allow: (model: CatalogModel) => Promise<boolean>;
   readonly deny: (model: CatalogModel) => Promise<boolean>;
 }
@@ -78,12 +83,17 @@ export function useDashboard(): DashboardStore {
 }
 
 /** Action in flight for one credential row, so the row can label the button that is running. */
-export function credentialAction(pending: PendingAction | null, credentialId: string): 'validate' | 'refresh' | null {
+export function credentialAction(
+  pending: PendingAction | null,
+  credentialId: string,
+): 'validate' | 'refresh' | 'rotate' | null {
   if (pending === null || pending.targetId !== credentialId) {
     return null;
   }
 
-  return pending.action === 'validate' || pending.action === 'refresh' ? pending.action : null;
+  return pending.action === 'validate' || pending.action === 'refresh' || pending.action === 'rotate'
+    ? pending.action
+    : null;
 }
 
 /** Action in flight for one model row, so the row can label the button that is running. */

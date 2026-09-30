@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { describeSecretProblem } from '../../config/secrets';
 import { useDashboard } from '../../hooks/useDashboard';
 import {
   NAMESPACE_PATTERN,
   SECRET_MAX_LENGTH,
-  SECRET_MIN_LENGTH,
   type AuthKind,
   type CredentialInput,
   type ProviderDescriptor,
@@ -49,8 +49,12 @@ function validate(
     return 'La base URL es obligatoria.';
   }
 
-  if (needsSecret && (secret.length < SECRET_MIN_LENGTH || secret.length > SECRET_MAX_LENGTH)) {
-    return `El secreto debe tener entre ${SECRET_MIN_LENGTH} y ${SECRET_MAX_LENGTH} caracteres.`;
+  if (needsSecret) {
+    const secretProblem = describeSecretProblem(secret);
+
+    if (secretProblem !== null) {
+      return secretProblem;
+    }
   }
 
   return null;
@@ -228,7 +232,14 @@ export function CredentialForm() {
           />
         )}
 
-        {problem !== null && <StateNote tone="danger" title="Revisa el formulario" detail={problem} />}
+        {problem !== null && (
+          <StateNote
+            tone="danger"
+            title="Revisa el formulario"
+            detail={problem}
+            nextStep="Corrige el dato que menciona el mensaje y vuelve a enviar el formulario."
+          />
+        )}
 
         <div className={styles.actions}>
           <ActionButton type="submit" label="Agregar credencial" variant="primary" pending={busy} />
