@@ -50,6 +50,8 @@ Fix what the audit proved broken, and leave the repository claiming only what it
 
 ## Status
 
+completed on 2026-09-30: every criterion verified, including the re-read by the independent lane, and the four items that pass found closed. The consequence for the product is small and worth naming: the gateway now bounds a provider request that never answers even while a client is watching, a query authenticated provider would get its credential instead of an anonymous request, and a provider that opens an event and never closes it fails that request instead of growing the process.
+
 fixes applied on 2026-09-29, in two commits: `a294795` (the three transport defects, with the first direct tests those two files have ever had, and the end to end harness now splitting a frame for real) and `6134c59` (the error code binding, the command line adoption, the declared dependency in the three apps). Every fixed finding carries a test, and the two that mattered most were proved red before being proved green: with the old `signal ?? budget` line restored, the transport suite fails one case and passes four, and with a code added only to the package, the backend typecheck fails on the binding assertion.
 
 Still owed, and honestly open:
