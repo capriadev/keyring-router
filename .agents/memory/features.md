@@ -9,6 +9,6 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 -->
 
 #4 Routing - choose among credentials by priority, lockout, quota and fallback chain [spec: 004-routing.md] [status: active]
-#8 Local UI - minimalist and micro detailed interface with three focused review passes [spec: 008-ui.md] [status: pending]
+#8 Local UI - minimalist and micro detailed interface with three focused review passes [spec: 008-ui.md] [status: active]
 #11 Live provider discovery - read the catalog of providers that declare no static models so OpenRouter and peers can be listed [no spec yet] [status: pending]
 #13 Open audit findings - the residue of both audit passes: H-B7, H-B8, the coverage asymmetry of the wire shapes and the budget constant, plus what no run has covered [spec: 013-open-audit-findings.md] [status: pending]
