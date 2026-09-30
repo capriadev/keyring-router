@@ -7,7 +7,16 @@ import { z } from 'zod';
  * exposed, can the provider be called) belong to `bll/`, never to a schema.
  */
 
-const modelSchema = z.string().min(1).max(256);
+/**
+ * A model id is an identifier the catalog knows. The length bound is what the contract asked for; the
+ * character rule is what keeps a value from forging a log line, because the router interpolates this id
+ * into its line and a break inside it would start a second one. Spec 018, finding F2-4.
+ */
+const modelSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(/^[^\p{Cc}]+$/u, 'a model id must not carry control characters');
 
 const openAiContentPartSchema = z.looseObject({
   type: z.string().min(1),

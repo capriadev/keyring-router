@@ -28,7 +28,12 @@ export function countFrameDrops(): FrameDrops {
   return {
     report: (_code, drop) => {
       count += 1;
-      reasons.add(KNOWN_REASONS.includes(drop?.reason) ? drop.reason : 'unrecognized');
+
+      // Read once: a value whose reason answers differently on each read would pass the check and then
+      // enter the set with whatever the second read returned. The audit of spec 017 proved it.
+      const reason = drop?.reason;
+
+      reasons.add(KNOWN_REASONS.includes(reason) ? reason : 'unrecognized');
     },
     line: (requestId) =>
       count === 0

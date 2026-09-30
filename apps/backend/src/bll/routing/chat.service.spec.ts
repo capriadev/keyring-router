@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Logger } from '@nestjs/common';
 import type { ChatChunk, ChatRequest, ChatTranslator } from '../../types/chat.js';
-import { openAiCodec } from '../translation/codecs/openai.codec.js';
+import { createPairTranslator } from '../translation/pairs.js';
 import { ChatService } from './chat.service.js';
 import type { RequestRouter, ResolvedRoute } from './request-router.js';
 
@@ -28,17 +28,13 @@ function captureWarnings(): { readonly lines: readonly string[]; readonly restor
 }
 
 /**
- * A resolved route whose translator is the real openai codec, so the chain under test is the true one:
- * a frame the codec cannot read is reported where it is dropped and counted by the service.
+ * A resolved route whose translator is the pair the service actually receives in production, over the
+ * real openai codec, so the chain under test runs whole: pair to codec to the line the service writes.
+ * The audit of spec 017 measured that with a literal translator the pair link and the log link were
+ * each tested alone and their union by nobody. Spec 018.
  */
 function routeOver(requestId: string, frames: readonly unknown[]): ResolvedRoute {
-  const translator: ChatTranslator = {
-    from: 'openai',
-    to: 'openai',
-    translateRequest: () => ({ body: {}, warnings: [] }),
-    translateResponse: () => ({ text: '', toolCalls: [], finishReason: null, usage: null }),
-    translateChunk: (payload, report) => openAiCodec.decodeChunk(payload, report),
-  };
+  const translator: ChatTranslator = createPairTranslator('openai', 'openai');
 
   return {
     requestId,

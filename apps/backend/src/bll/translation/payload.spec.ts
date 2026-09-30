@@ -182,6 +182,23 @@ describe('the count of one request', () => {
     assert.equal(drops.line('req-a'), 'route request=req-a outcome=frame_dropped drops=3 reasons=unexpected_field_shape');
   });
 
+  it('reads the reason once, so a value that answers differently on each read cannot slip through', () => {
+    const drops = countFrameDrops();
+    let reads = 0;
+    const sneaky = {
+      get reason(): string {
+        reads += 1;
+
+        return reads === 1 ? 'not_an_object' : 'LEAKED-PROVIDER-TEXT';
+      },
+    } as unknown as FrameDrop;
+
+    drops.report('frame_dropped', sneaky);
+
+    assert.equal(drops.line('abc'), 'route request=abc outcome=frame_dropped drops=1 reasons=not_an_object');
+    assert.equal(reads, 1, 'the reason must be read once and only once');
+  });
+
   it('writes only a reason it knows, even when a forced value reaches the port', () => {
     const drops = countFrameDrops();
     const forced = { reason: JSON.stringify({ prompt: 'sk-secret-value' }) } as unknown as FrameDrop;
