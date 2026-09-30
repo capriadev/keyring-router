@@ -34,7 +34,7 @@ The 10 s budget now reaches every call and has no path to be configured. Decisio
 ## Acceptance criteria
 
 - [ ] H-B7 and H-B8 are fixed in a fix spec of their own, each with a test that fails without the fix, and the error contract change is decided in writing.
-- [ ] The interface gets a test script, or the interface milestone states in its spec why reading a live API is out of scope for this version.
+- [x] The interface gets a test script, or the interface milestone states in its spec why reading a live API is out of scope for this version. The script exists as of 2026-09-30: `npm run test --workspace apps/frontend` runs node:test over `src/**/*.spec.ts` (9 cases over the HTTP client's error mapping). Why reading a live API is still not covered is answered in spec 008 when M9 closes.
 
 ## Status
 
