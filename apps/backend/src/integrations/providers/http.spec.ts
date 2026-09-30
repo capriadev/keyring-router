@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { ProviderFailure, type ProviderErrorKind } from '../../types/provider.js';
-import { DEFAULT_TIMEOUT_MS, requestJson, type ProviderFetch } from './http.js';
+import { DEFAULT_TIMEOUT_MS, requestJson, requestStream, type ProviderFetch } from './http.js';
 
 const fail = (kind: ProviderErrorKind, message: string): ProviderFailure =>
   new ProviderFailure('probe' as never, kind, message);
@@ -15,6 +15,19 @@ function call(fetch: ProviderFetch, signal?: AbortSignal, timeoutMs = DEFAULT_TI
     ...(signal === undefined ? {} : { signal }),
     fetch,
     timeoutMs,
+    fail,
+  });
+}
+
+/** The same call asking for a stream: `requestStream` shares `send`, so it must classify the same way. */
+function callStream(fetch: ProviderFetch, signal?: AbortSignal): Promise<unknown> {
+  return requestStream({
+    label: 'Ollama',
+    operation: 'GET /api/tags',
+    url: 'http://127.0.0.1:11434/api/tags',
+    ...(signal === undefined ? {} : { signal }),
+    fetch,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
     fail,
   });
 }
@@ -66,5 +79,17 @@ describe('a failed provider call', () => {
 
     assert.equal(failure.kind, 'unreachable');
     assert.equal(failure.message, 'Ollama did not answer GET /api/tags');
+  });
+
+  it('classifies a streamed call the same way, because it shares the send', async () => {
+    const controller = new AbortController();
+    const pending = callStream(hanging, controller.signal);
+
+    controller.abort();
+
+    const failure = await failureOf(pending);
+
+    assert.equal(failure.kind, 'aborted');
+    assert.equal(failure.message, 'the client stopped GET /api/tags');
   });
 });

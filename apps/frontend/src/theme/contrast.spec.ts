@@ -37,8 +37,14 @@ const PAIRS: readonly ContrastPair[] = [
   { what: 'acento sobre superficie elevada (identificador de modelo)', ink: '--color-accent', surface: '--color-surface-raised', needs: 4.5 },
   { what: 'acento claro sobre superficie (enlace apuntado)', ink: '--color-accent-strong', surface: '--color-surface', needs: 4.5 },
   { what: 'acento pulsado sobre superficie elevada (control pulsado)', ink: '--color-accent-pressed', surface: '--color-surface-raised', needs: 4.5 },
+  { what: 'acento pulsado sobre superficie (enlace pulsado)', ink: '--color-accent-pressed', surface: '--color-surface', needs: 4.5 },
+  { what: 'acento pulsado sobre superficie hundida (boton secundario pulsado, entrada pulsada)', ink: '--color-accent-pressed', surface: '--color-surface-inset', needs: 4.5 },
   { what: 'texto del boton primario sobre acento', ink: '--color-accent-content', surface: '--color-accent', needs: 4.5 },
+  { what: 'texto del boton primario apuntado sobre acento claro', ink: '--color-accent-content', surface: '--color-accent-strong', needs: 4.5 },
+  { what: 'texto del boton primario pulsado sobre acento pulsado', ink: '--color-accent-content', surface: '--color-accent-pressed', needs: 4.5 },
   { what: 'texto del boton peligro sobre danger', ink: '--color-danger-content', surface: '--color-danger', needs: 4.5 },
+  { what: 'texto del boton peligro apuntado sobre danger claro', ink: '--color-danger-content', surface: '--color-danger-strong', needs: 4.5 },
+  { what: 'texto del boton peligro pulsado sobre danger pulsado', ink: '--color-danger-content', surface: '--color-danger-pressed', needs: 4.5 },
   { what: 'ok sobre superficie (pildora del panel)', ink: '--color-ok', surface: '--color-surface', needs: 4.5 },
   { what: 'ok sobre superficie elevada (pildora en tabla)', ink: '--color-ok', surface: '--color-surface-raised', needs: 4.5 },
   { what: 'ok sobre superficie hundida (aviso de accion aplicada)', ink: '--color-ok', surface: '--color-surface-inset', needs: 4.5 },
@@ -56,7 +62,8 @@ const PAIRS: readonly ContrastPair[] = [
   { what: 'anillo de foco sobre superficie hundida', ink: '--color-accent', surface: '--color-surface-inset', needs: 3 },
   { what: 'borde fuerte sobre superficie elevada (regla de cabecera, decorativo)', ink: '--color-border-strong', surface: '--color-surface-raised', needs: 0 },
   { what: 'borde sobre superficie elevada (separador de filas, decorativo)', ink: '--color-border', surface: '--color-surface-raised', needs: 0 },
-  { what: 'borde sobre superficie elevada con el control inactivo', ink: '--color-border', surface: '--color-surface-raised', needs: 0 },
+  { what: 'borde del campo inactivo sobre superficie hundida, exento por WCAG 1.4.11 (decorativo)', ink: '--color-border', surface: '--color-surface-inset', needs: 0 },
+  { what: 'borde del select inactivo sobre superficie, exento por WCAG 1.4.11 (decorativo)', ink: '--color-border', surface: '--color-surface', needs: 0 },
 ];
 
 /** The theme folder of this workspace, whether the suite runs from the workspace or from the repo root. */
@@ -157,7 +164,7 @@ describe('contraste de los tokens', () => {
   it('mide tambien los pares decorativos, que se informan y no se juzgan', () => {
     const decorative = PAIRS.filter((pair) => pair.needs === 0);
 
-    assert.equal(decorative.length, 3);
+    assert.equal(decorative.length, 4);
 
     for (const pair of decorative) {
       assert.ok(contrast(value(pair.ink), value(pair.surface)) >= 1);
