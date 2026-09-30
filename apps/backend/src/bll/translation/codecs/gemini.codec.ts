@@ -13,7 +13,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts, isRemoteUrl, parseToolArguments, readDataUrl, stringifyToolArguments } from '../content.js';
 import { geminiPlacement, placeParameters } from '../parameters.js';
-import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readText } from '../payload.js';
+import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readRecordArray, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 
@@ -219,12 +219,15 @@ function geminiCallId(index: number): string {
 
 function readParts(
   candidate: Readonly<Record<string, unknown>> | null,
+  report?: FrameReport,
 ): readonly Readonly<Record<string, unknown>>[] {
-  if (candidate === null || !isRecord(candidate.content)) {
+  if (candidate === null) {
     return [];
   }
 
-  return readItems(candidate.content, 'parts').filter(isRecord);
+  const content = readRecord(candidate, 'content', report);
+
+  return content === null ? [] : readRecordArray(content, 'parts', report);
 }
 
 /** A reasoning part carries no answer text; the normalized contract has no channel for it. */
@@ -295,10 +298,10 @@ function decodeChunk(payload: unknown, report?: FrameReport): readonly ChatChunk
   }
 
   const chunks: ChatChunk[] = [];
-  const candidate = readFirst(frame, 'candidates');
+  const candidate = readFirst(frame, 'candidates', report);
   let calls = 0;
 
-  readParts(candidate).forEach((part) => {
+  readParts(candidate, report).forEach((part) => {
     const call = partFunctionCall(part);
 
     if (call !== null) {

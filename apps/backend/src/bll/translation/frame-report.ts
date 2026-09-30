@@ -1,9 +1,10 @@
-import type { FrameReport } from '../../types/chat.js';
+import type { FrameDropReason, FrameReport } from '../../types/chat.js';
 
 /**
- * The dropped frames of one request, counted instead of printed one by one: a provider that sends
- * garbage must not be able to flood the log, and the count is the fact worth having. The line names the
- * request and the stable code, never a frame, because a frame is provider data. Spec 014.
+ * The dropped frames of one request, counted and classified instead of printed one by one: a provider
+ * that sends garbage must not be able to flood the log, and the count plus the reasons are the facts
+ * worth having. The line names the request, the stable code, the count and the distinct reasons, never
+ * a frame, because a frame is provider data. Specs 014 and 016.
  */
 export interface FrameDrops {
   /** Handed to the translator, so a dropped frame is counted where it is dropped. */
@@ -14,11 +15,17 @@ export interface FrameDrops {
 
 export function countFrameDrops(): FrameDrops {
   let count = 0;
+  const reasons = new Set<FrameDropReason>();
 
   return {
-    report: () => {
+    report: (_code, drop) => {
       count += 1;
+      reasons.add(drop.reason);
     },
-    line: (requestId) => (count === 0 ? null : `route request=${requestId} outcome=frame_dropped frames=${count}`),
+    line: (requestId) =>
+      count === 0
+        ? null
+        : `route request=${requestId} outcome=frame_dropped frames=${count}` +
+          ` reasons=${[...reasons].sort().join(',')}`,
   };
 }

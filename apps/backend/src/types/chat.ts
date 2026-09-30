@@ -114,11 +114,32 @@ export interface TranslatedRequest {
  */
 export type FrameDropCode = 'frame_dropped';
 
+/** The shapes a frame can arrive in when it is not the object the protocol describes. */
+export type FrameShape = 'array' | 'number' | 'string' | 'boolean' | 'null' | 'other';
+
 /**
- * Where a translator reports a frame it dropped, and why, in its own words: the detail names the shape
- * of what arrived and never its content, because a frame is provider data and may carry anything.
+ * Why a frame was dropped. Closed on purpose: this union and the two below are what keep provider data
+ * out of the port, so the promise of never carrying a frame's content is enforced by the compiler
+ * instead of by a comment. An absent field is not a drop: a frame that carries nothing for the client
+ * is not a loss, and only a field that is present with a shape the codec does not model is reported.
  */
-export type FrameReport = (code: FrameDropCode, detail: string) => void;
+export type FrameDropReason = 'not_an_object' | 'parsed_not_an_object' | 'unexpected_field_shape';
+
+/** The fields a codec checks, named one by one for the same reason: a field name cannot be a payload. */
+export type FrameField = 'choices' | 'delta' | 'candidates' | 'content' | 'parts';
+
+/**
+ * What a translator reports about a frame it had to drop. Every value here is written by this
+ * repository about what it inspected, so nothing that arrived from a provider can pass through it.
+ */
+export interface FrameDrop {
+  readonly reason: FrameDropReason;
+  readonly field?: FrameField;
+  readonly shape?: FrameShape;
+}
+
+/** Where a translator reports a frame it dropped, and why. */
+export type FrameReport = (code: FrameDropCode, drop: FrameDrop) => void;
 
 /** One implementation per pair of formats. A pair that is not registered fails loudly. */
 export interface ChatTranslator {

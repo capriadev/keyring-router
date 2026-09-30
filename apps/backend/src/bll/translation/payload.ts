@@ -1,5 +1,5 @@
 import { TranslationError } from './registry.js';
-import type { FrameReport } from '../../types/chat.js';
+import type { FrameField, FrameReport, FrameShape } from '../../types/chat.js';
 
 export type JsonRecord = Readonly<Record<string, unknown>>;
 
@@ -8,6 +8,27 @@ export const STREAM_DONE = '[DONE]';
 
 export function isRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The shape a value arrived in, named from a closed list so nothing of the value itself can travel. */
+export function shapeOf(value: unknown): FrameShape {
+  if (Array.isArray(value)) {
+    return 'array';
+  }
+
+  if (value === null) {
+    return 'null';
+  }
+
+  if (typeof value === 'number') {
+    return 'number';
+  }
+
+  if (typeof value === 'string') {
+    return 'string';
+  }
+
+  return typeof value === 'boolean' ? 'boolean' : 'other';
 }
 
 /** Reads a payload that must be an object. The message names what was expected, never what arrived. */
@@ -65,7 +86,7 @@ export function parseFrame(payload: unknown, report?: FrameReport): JsonRecord |
     return payload;
   }
 
-  report?.('frame_dropped', `a stream frame arrived as ${Array.isArray(payload) ? 'an array' : typeof payload}`);
+  report?.('frame_dropped', { reason: 'not_an_object', shape: shapeOf(payload) });
 
   return null;
 }
@@ -83,14 +104,91 @@ function parseFrameText(text: string, report?: FrameReport): JsonRecord | null {
     return parsed;
   }
 
-  report?.('frame_dropped', `a stream frame parsed to ${Array.isArray(parsed) ? 'an array' : typeof parsed}`);
+  report?.('frame_dropped', { reason: 'parsed_not_an_object', shape: shapeOf(parsed) });
 
   return null;
 }
 
-/** Reads the first element of an array field, or `null` when it carries none. */
-export function readFirst(source: JsonRecord, key: string): JsonRecord | null {
-  const [first] = readItems(source, key);
+/**
+ * Reads the first element of an array field when it holds a record. An absent field, or an empty array,
+ * carries nothing for the client and says nothing; a field that is present with a shape the codec does
+ * not model is a frame it could not read, and is reported as such. Spec 016.
+ */
+export function readFirst(source: JsonRecord, key: FrameField, report?: FrameReport): JsonRecord | null {
+  const value = source[key];
 
-  return isRecord(first) ? first : null;
+  if (value === undefined) {
+    return null;
+  }
+
+  const items = readItems(source, key);
+
+  if (items.length === 0) {
+    if (!Array.isArray(value)) {
+      report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(value) });
+    }
+
+    return null;
+  }
+
+  const [first] = items;
+
+  if (!isRecord(first)) {
+    report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(first) });
+
+    return null;
+  }
+
+  return first;
+}
+
+/** Reads an object field. Absent carries nothing; present with another shape is a drop. */
+export function readRecord(source: JsonRecord, key: FrameField, report?: FrameReport): JsonRecord | null {
+  const value = source[key];
+
+  if (value === undefined) {
+    return null;
+  }
+
+  if (isRecord(value)) {
+    return value;
+  }
+
+  report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(value) });
+
+  return null;
+}
+
+/**
+ * Reads an array field whose elements are objects. A present field that is not an array, and an element
+ * that is not an object, are both drops; an absent field carries nothing. Spec 016.
+ */
+export function readRecordArray(
+  source: JsonRecord,
+  key: FrameField,
+  report?: FrameReport,
+): readonly JsonRecord[] {
+  const value = source[key];
+
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(value) });
+
+    return [];
+  }
+
+  const records: JsonRecord[] = [];
+
+  for (const item of value) {
+    if (isRecord(item)) {
+      records.push(item);
+    } else {
+      report?.('frame_dropped', { reason: 'unexpected_field_shape', field: key, shape: shapeOf(item) });
+    }
+  }
+
+  return records;
 }

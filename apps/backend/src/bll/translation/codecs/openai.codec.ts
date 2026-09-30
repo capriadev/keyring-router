@@ -12,7 +12,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts } from '../content.js';
 import { placeParameters, topLevelPlacement } from '../parameters.js';
-import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readText } from '../payload.js';
+import { asRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 
@@ -129,8 +129,8 @@ function decodeChunk(payload: unknown, report?: FrameReport): readonly ChatChunk
   }
 
   const chunks: ChatChunk[] = [];
-  const choice = readFirst(frame, 'choices');
-  const delta = choice !== null && isRecord(choice.delta) ? choice.delta : null;
+  const choice = readFirst(frame, 'choices', report);
+  const delta = choice === null ? null : readRecord(choice, 'delta', report);
 
   if (delta !== null) {
     const text = readText(delta, 'content');
