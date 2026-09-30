@@ -12,13 +12,13 @@ Update at session close. This is not a changelog: it is the state of the work.
 
 ## Last session
 - M1 to M6 and M8 complete; the two audit passes over specs 010 and 012 are closed and spec 013 keeps the residue that needs a decision, now including the mirrored secret bounds (N-6).
-- M9 started: passes 1 and 2 of spec 008 are committed, pass 3 is running; the interface has its own test script and the rotation of a secret reached the screen.
+- M9 implemented: the three passes of spec 008 are committed and the gate is green; the independent audit is owed, and no self review was substituted for it.
 
 ## Next up
-- M9 pass 3 (contrast measured with a script, truncation of long identifiers, number and date formatting, reduced motion, no layout shift), then the independent audit over the three passes.
-- M9 owns spec 013's open question in writing: why reading a live API stays out of scope for this version.
+- M9 is implemented: the three passes are committed (`04a7f5b`, `4704211`, `6e978ec`) and the gate is green; the independent audit is owed and blocked on authentication.
 - M7 routing (spec 004) closes the code; M10 live discovery has no spec yet.
-- User only: `kr service install` (elevation), the first run against a real provider key, the remote URL update (GitHub still answers `This repository moved` although the push succeeds), then merge into `main`.
+- Spec 008 closes, and its line leaves `features.md`, only after the audit re-checks its ten criteria.
+- User only: re-authenticate Cline so the lanes work again (the audit of M9 could not run), `kr service install` (elevation), the first run against a real provider key, the remote URL update (GitHub still answers `This repository moved` although the push succeeds), then merge into `main`.
 
 ## Open decisions (unresolved, blocking or not)
 - Credential deletion: a scoped policy rule currently blocks the delete through the foreign key; decide it in its own spec (full catalog in `architecture.md`).
