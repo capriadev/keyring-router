@@ -30,7 +30,7 @@ It measured that the new case guards the forward in `pairs.ts`, and that the com
 - [x] The case that runs the whole chain asserts the line it produces, and it is the one that fails when the forward in `pairs.ts` is emptied: red run recorded. `chat.service.spec.ts` now builds its route over `createPairTranslator('openai', 'openai')` and its stream carries a frame with a wrong shaped field, so one case runs pair to codec to line for both kinds of reason.
 - [x] The suites of specs 001 to 017 keep passing, and the end to end run keeps passing. 369 backend tests, 19 command line tests, 17 interface tests, the build of the four workspaces and the 27 case end to end run, all green.
 - [x] Spec 015 registers F2-2, F2-3, F2-5, F2-6 and the observation about the provider text in a 502 body, and spec 017 ticks its audit criterion with this round's outcome and its declared limits.
-- [ ] An independent audit reproduces every criterion. Dispatched with the commit that closes this spec.
+- [ ] An independent audit reproduces every criterion. OWED: five dispatches failed with `Unauthorized` in a row (`run_00019`, `run_00020`, `run_00022` on `kr-audit` and `run_00021` on `kr-audit-m9`) between 2026-09-30 06:5x and 07:0x, three of them after the account had been re-authenticated, so the failure is intermittent rather than a setting. One of those failures left `pairs.ts` with its red state applied, which the coordinator caught with the pre-dispatch check and restored from HEAD, keeping the as-found bytes in `temp/pairs18-asfound.ts`. The baseline for the next attempt is `7f37218` with a clean tree, and the auditor is instructed to run its reds on a copy of the repository so a dying lane cannot touch the product.
 
 ## Risks
 
