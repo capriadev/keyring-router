@@ -16,7 +16,8 @@ Update at session close. This is not a changelog: it is the state of the work.
 
 ## Next up
 - Spec 015 holds the residue of the audits of 008, 014 and 016: the layout reserve, the three empty folders that need the user's word, the fields two codecs still drop in silence (A16-4), a provider fact no run can check here (A16-5), the missing socket to line case (A16-6), the fabricated tool call (A16-7) and the browser walk.
-- Spec 017 is implemented; its audit round was spent on a dirty tree instead of on its criteria, so a fresh round is owed, and the tree has to be checked right before dispatching it.
+- Spec 017 is implemented and audited: the second round (`run_00018`) ran its four criteria, found no blocking or important defect, and its findings were fixed in spec 018 or registered in 015.
+- Spec 018 is implemented (the guard reads the reason once, the v1 model id refuses control characters, and one case runs pair to codec to line); its audit is dispatched.
 - M7 routing (spec 004) is blocked on a decision rather than on code: nothing defines how a client asks for a model that several credentials can serve, and neither the priority nor the fallback chain has anywhere to live.
 - Spec 008 closes, and its line leaves `features.md`, only when its three browser-dependent criteria are walked with the panel open.
 - User only: the browser walk of the panel, `kr service install` (elevation), the first run against a real provider key, the remote URL update, then merge into `main`.

@@ -1,0 +1,46 @@
+# Fix: the audit findings of spec 017
+
+Spec ID: 018
+Status: pending
+Branch: feature/v1-gateway
+Origin: the second round of the audit of spec 017 (`run_00018`, report in `temp/audit-017-report-round2.md`). Its four criteria hold with declared limits, it found no blocking or important defect, and it left six findings. Three are fixed here and four are registered in spec 015.
+
+## Objective
+
+Close the two findings that are code, and the limit the audit declared on its own criterion 1, so that the union of the two halves it measured becomes a case that runs.
+
+## Design
+
+### F2-1 (minor): the guard reads the reason twice
+
+The runtime check reads `drop.reason` once inside `KNOWN_REASONS.includes(...)` and again in the true branch of the ternary. A value whose `reason` is an accessor answers a known reason to the first read and anything to the second, and the second read is what enters the set: the audit measured a line carrying `reasons=LEAKED-PROVIDER-TEXT` with two reads and not with one. A frame cannot produce an accessor, so this is only reachable from code that already ignores the type, which is why it is minor and why it is still worth one line: the reason is read once into a constant and that constant is what the check and the set use.
+
+### F2-4 (minor): the model id reaches the router log line raw
+
+`request-router.ts:136` interpolates the requested model id into the log line, and the client-facing schema bounds it by length only (`v1-schemas.ts:10`), so an id carrying a line break forges a second log line. The audit is right that the value has to match a catalog row to get that far, which makes it an identifier the provider declared rather than free text, and it is still text the client chose. The boundary is where this belongs: the v1 schema refuses control characters, so the gateway answers 400 before the request reaches the router, and no log line has to defend itself.
+
+### The limit the audit declared on criterion 1
+
+It measured that the new case guards the forward in `pairs.ts`, and that the composition `pairs.ts` to `ChatService.log` is exercised by nobody: `chat.service.spec.ts` replaces the translator with an object, so the pair link is tested without the log and the log link without the pair. The same spec now builds its route over the real pair (`createPairTranslator('openai', 'openai')`) and its stream carries a frame with a wrong shaped field, so one case runs the whole chain and covers both kinds of reason.
+
+## Acceptance criteria
+
+- [x] A test asserts that a reason answering differently on each read is written as `unrecognized`, with the number of reads measured: red before the fix, recorded. With the double read restored, the case fails (the line then carries the second answer) and the case asserts `reads` is 1, which is what makes it safe.
+- [x] A test asserts that the v1 chat schema refuses a model id carrying a control character, and that a normal id still passes. Red before the fix, recorded: with the character rule disabled the case fails.
+- [x] The case that runs the whole chain asserts the line it produces, and it is the one that fails when the forward in `pairs.ts` is emptied: red run recorded. `chat.service.spec.ts` now builds its route over `createPairTranslator('openai', 'openai')` and its stream carries a frame with a wrong shaped field, so one case runs pair to codec to line for both kinds of reason.
+- [x] The suites of specs 001 to 017 keep passing, and the end to end run keeps passing. 369 backend tests, 19 command line tests, 17 interface tests, the build of the four workspaces and the 27 case end to end run, all green.
+- [x] Spec 015 registers F2-2, F2-3, F2-5, F2-6 and the observation about the provider text in a 502 body, and spec 017 ticks its audit criterion with this round's outcome and its declared limits.
+- [ ] An independent audit reproduces every criterion. Dispatched with the commit that closes this spec.
+
+## Risks
+
+- Refusing control characters in a model id could refuse a legitimate id. The rule is the narrowest one that closes the hole: the characters that let a value forge a line are not part of any model id a provider declares, and the case proves a normal id still passes.
+- Using the real pair in the service spec makes the case depend on the openai codec's behaviour; it already did, and now it also depends on the pair, which is the point.
+
+## Status
+
+implemented on 2026-09-30. The guard reads the reason once, the v1 schema refuses a control character in a model id, and the case that runs the chain whole now uses the pair the service receives in production.
+
+The evidence: with the three fixes reverted one by one in a single red run, three cases fail, one per fix (the accessor case of the guard, the schema case, and the whole-chain case of the service), while the rest stay green; the three files were restored byte identical, verified by hash. The gate afterwards: 369 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
+
+The audit of this spec is dispatched with this commit and its outcome is ticked when it returns.
