@@ -19,7 +19,7 @@ import {
   stringifyToolArguments,
 } from '../content.js';
 import { placeParameters, topLevelPlacement } from '../parameters.js';
-import { asRecord, isRecord, parseFrame, readCount, readItems, readText } from '../payload.js';
+import { asRecord, isRecord, parseFrame, readCount, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 

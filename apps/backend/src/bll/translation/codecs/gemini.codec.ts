@@ -13,7 +13,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts, isRemoteUrl, parseToolArguments, readDataUrl, stringifyToolArguments } from '../content.js';
 import { geminiPlacement, placeParameters } from '../parameters.js';
-import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readRecordArray, readText } from '../payload.js';
+import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readRecord, readRecordArray, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 

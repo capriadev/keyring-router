@@ -52,12 +52,6 @@ export function readCount(source: JsonRecord, key: string): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-export function readItems(source: JsonRecord, key: string): readonly unknown[] {
-  const value = source[key];
-
-  return Array.isArray(value) ? value : [];
-}
-
 /**
  * One streamed frame, turned into the object the protocol describes. A frame the transport already parsed
  * arrives as an object; a raw `data:` line arrives as text, because the translator must not depend on who

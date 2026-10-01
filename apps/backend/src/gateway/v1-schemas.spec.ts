@@ -13,7 +13,11 @@ const CLAUDE_BODY = {
   messages: [{ role: 'user', content: 'hola' }],
 };
 
-/** One character per family the rule refuses, named so a failure says which family was not covered. */
+/**
+ * One character per family the rule refuses, named so a failure says which family was not covered. The
+ * format family has two entries, a bidirectional override and a zero width space, so the table is eight
+ * rows over seven families.
+ */
 const NON_PRINTABLE: Readonly<Record<string, string>> = {
   'a control character': '\n',
   'a bidirectional override': '\u202e',

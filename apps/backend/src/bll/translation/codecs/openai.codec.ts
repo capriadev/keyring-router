@@ -12,7 +12,7 @@ import type {
 } from '../../../types/chat.js';
 import { joinTextParts } from '../content.js';
 import { placeParameters, topLevelPlacement } from '../parameters.js';
-import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readItems, readRecord, readText } from '../payload.js';
+import { asRecord, firstRecord, isRecord, parseFrame, readCount, readFirst, readRecord, readText } from '../payload.js';
 import { TranslationError } from '../registry.js';
 import type { ProtocolCodec } from './codec.js';
 
