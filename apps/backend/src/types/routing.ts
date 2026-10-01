@@ -52,6 +52,9 @@ export interface RoutingState {
 
 export type RoutingSkipReason = 'locked_out' | 'quota_exhausted';
 
+/** The last thing that happened to a credential, as the observability endpoint reports it. */
+export type RoutingOutcome = 'served' | 'skipped' | 'failed';
+
 export interface SkippedAttempt {
   readonly attempt: RoutingAttempt;
   readonly reason: RoutingSkipReason;

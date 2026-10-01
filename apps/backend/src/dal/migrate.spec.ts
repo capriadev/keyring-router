@@ -40,7 +40,50 @@ describe('runMigrations', () => {
 
     const migrated = createDatabase(path);
 
-    assert.deepEqual(tableNames(migrated), ['__drizzle_migrations', 'catalog_models', 'credentials', 'install_keys', 'policies']);
+    assert.deepEqual(tableNames(migrated), [
+      '__drizzle_migrations',
+      'catalog_models',
+      'credential_lockouts',
+      'credentials',
+      'install_keys',
+      'policies',
+      'quota_usage',
+      'routing_state',
+    ]);
+    migrated.$client.close();
+  });
+
+  it('creates the routing tables with the columns their rules read', () => {
+    const path = join(directory, 'routing.db');
+
+    runMigrations(path);
+
+    const migrated = createDatabase(path);
+    const columns = (table: string): string[] =>
+      migrated.$client
+        .prepare(`pragma table_info(${table})`)
+        .all()
+        .map((row) => (row as { name: string }).name);
+
+    assert.deepEqual(columns('credential_lockouts'), [
+      'credential_id',
+      'consecutive_failures',
+      'locked_until',
+      'updated_at',
+    ]);
+    assert.deepEqual(columns('quota_usage'), [
+      'credential_id',
+      'remaining_requests',
+      'remaining_tokens',
+      'reset_at',
+      'observed_at',
+    ]);
+    assert.deepEqual(columns('routing_state'), [
+      'credential_id',
+      'last_outcome',
+      'last_reason',
+      'updated_at',
+    ]);
     migrated.$client.close();
   });
 
@@ -52,7 +95,7 @@ describe('runMigrations', () => {
 
     const migrated = createDatabase(path);
 
-    assert.equal(appliedMigrations(migrated), 2);
+    assert.equal(appliedMigrations(migrated), 3);
     migrated.$client.close();
   });
 });

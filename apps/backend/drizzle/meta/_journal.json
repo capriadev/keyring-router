@@ -15,6 +15,13 @@
       "when": 1790662429193,
       "tag": "0001_odd_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790898641754,
+      "tag": "0002_curved_zarda",
+      "breakpoints": true
     }
   ]
 }
