@@ -38,7 +38,7 @@ Specs 018 and 019 say that emptying the forward in `pairs.ts` turns two cases re
 - [x] The wording of specs 018 and 019 is corrected where it is written, and spec 019's design no longer claims a class it does not close.
 - [x] Spec 015 registers the space as a deliberate exception of the rule, so a future reader does not read it as an oversight.
 - [x] The suites of specs 001 to 019 keep passing, and the end to end run keeps passing. 381 backend tests, 19 command line tests, 17 interface tests, the build of the four workspaces and the 27 case end to end run, all green.
-- [ ] An independent audit reproduces every criterion. Dispatched with the commit that closes this spec.
+- [x] An independent audit reproduces every criterion. RUN on 2026-09-30/10-01 (`run_00028`, report in `temp/audit-020-report.md`). It reproduced the red of the three callers (three cases, one per caller), the boundary cases (the eight rows refused on both facades, the printable space accepted in both states, a normal identifier passing), the two corrected claims and the gate (381 + 19 + 17, the build and 27/27 of the end to end run). No blocking or important defect, and three minor findings: A20-1 (the double-read class has thirteen more sites in the provider payload, measured with a read counter), A20-2 (`readItems` was left as dead code by this spec) and A20-3 (invisible characters outside the seven families reach the resolved line). A20-2 was fixed the same day; A20-1 and A20-3 are registered in spec 015 by this spec's own decision. It also corrected one claim of this spec, which the status below now states correctly.
 
 ## Risks
 
@@ -47,7 +47,9 @@ Specs 018 and 019 say that emptying the forward in `pairs.ts` turns two cases re
 
 ## Status
 
-implemented on 2026-09-30. The three callers read their field once, `payload.ts` exposes `firstRecord` so the shape cannot come back, the boundary refuses the whole `C` group plus the two separators with a printable space left alone on purpose, and the three claims that overstated what the code does are corrected where they were written.
+implemented on 2026-09-30. The three callers read their field once, `payload.ts` exposes `firstRecord` so the shape cannot come back for a reader that takes a field name, the boundary refuses the whole `C` group plus the two separators with a printable space left alone on purpose, and the three claims that overstated what the code does are corrected where they were written.
+
+The audit of this spec measured that "the shape cannot come back" is true for that reader and false for the class: thirteen other fields of the provider payload are still read twice with the second read deciding, and in one of them the second read raises an unhandled `TypeError`. Those thirteen are registered in spec 015 with their lines, and the same read-once fix applies to them when their files are touched.
 
 The evidence: reverting the three callers to the shape that reads through a reader and narrowing the class back turns exactly six cases red, three per change, with all four files restored byte identical, verified by hash. The gate afterwards: 381 backend tests, 19 command line tests, 17 interface tests, the build and the 27 case end to end run, all green.
 
