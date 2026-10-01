@@ -1,6 +1,6 @@
 # Features - SDD index
 
-last_id: 20
+last_id: 21
 
 <!--
 One line per feature. Planned features may be registered here without a spec yet (status: pending); a spec is opened when the feature is planned and ready to develop. When a feature is COMPLETE: remove its line here and mark the spec status as completed. SPECS ARE NEVER DELETED - specs/ is a permanent registry, the numbering exists for that. Never reuse an ID; last_id only grows.
@@ -8,7 +8,7 @@ One line per feature. Planned features may be registered here without a spec yet
 Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active|blocked|completed]
 -->
 
-#4 Routing - choose among credentials by priority, lockout, quota and fallback chain [spec: 004-routing.md] [status: active]
+#4 Routing - three modes (normal, auto model, auto general) over an ordered cascade of models the user writes, plus lockout, quota and observability [spec: 004-routing.md] [status: active]
 #8 Local UI - minimalist and micro detailed interface with three focused review passes [spec: 008-ui.md] [status: active]
 #11 Live provider discovery - read the catalog of providers that declare no static models so OpenRouter and peers can be listed [no spec yet] [status: pending]
 #13 Open audit findings - the residue of both audit passes: H-B7, H-B8, the coverage asymmetry of the wire shapes and the budget constant, plus what no run has covered [spec: 013-open-audit-findings.md] [status: pending]
@@ -16,3 +16,7 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 #15 Residue of the audits of the interface and of the abort fix - what the two independent passes found that needs a decision or a browser [spec: 015-audit-residue-ui-and-abort.md] [status: active]
 #16 Fix: the drop detail cannot carry provider data, the log is asserted, and a wrong shaped field is not silence [spec: 016-fix-drop-detail-and-codec-fields.md] [status: active]
 #17 Fix: the audit findings of spec 016 - the production link asserted, the log as a last line of defence, and a count named for what it counts [spec: 017-fix-audit-016-findings.md] [status: active]
+#18 Fix: the audit findings of spec 017 - the field reader reads once and the boundary refuses the control classes, with two overstated claims corrected [spec: 018-fix-audit-017-findings.md] [status: active]
+#19 Fix: the audit findings of spec 018 - the field reader reads once everywhere, the boundary closes the whole C group, and over-claims corrected [spec: 019-fix-audit-018-findings.md] [status: active]
+#20 Fix: the audit findings of spec 019 - the class of the double read closed, the whole C group at the boundary, and three over-claims corrected [spec: 020-fix-audit-019-findings.md] [status: active]
+#21 Routing profiles per entry point - several client facing APIs, each with its own mode and its own cascade, one for an agent and one for a service [no spec yet] [status: pending]

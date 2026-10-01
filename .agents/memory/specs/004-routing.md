@@ -1,4 +1,4 @@
-# Routing: candidates, lockout, quota and fallback
+# Routing: modes, cascade, lockout, quota and observability
 
 Spec ID: 004
 Status: pending
@@ -7,14 +7,15 @@ Depends on: spec 002 (catalog), spec 003 (request router) and spec 005 (secrets)
 
 ## Objective
 
-Turn `request-router` from "one namespace, one credential" into a decision that accounts for health: the name the client used keeps selecting one exact account, and what routing adds is respecting priority, skipping an account that is in lockout or out of quota, and falling back when the first choice fails. Several accounts of one provider are expressed by giving them different names, which is what makes them useful instead of confusing. How far the fallback goes is the open decision recorded below.
+Turn `request-router` from "one namespace, one credential" into a decision that accounts for health and for an ordered cascade: the name the client used selects one account, and the mode of its entry point decides what happens when that account fails, from failing with a clear message to walking a preference list of models the user wrote. Several accounts of one provider are expressed by giving them different names, which is what makes them useful instead of confusing.
 
 ## Scope
 
 In scope:
 
-- Candidate resolution: the first segment of the model id is the namespace the client used, and it resolves to one account with its provider and base URL. Producing more than one candidate depends on the open decision recorded below.
-- Priority order, with a documented and visible tie breaker.
+- Candidate resolution: the first segment of the model id is the namespace the client used, and it resolves to one account with its provider and base URL. A cascade entry names a model instead, and its candidates are every credential that exposes that model.
+- The three modes and the ordered cascade, recorded under Decisions.
+- Priority order among the candidates of one entry, with a documented and visible tie breaker.
 - Lockout: after N consecutive failures a credential is skipped for a cooldown, with recovery on the first success after the window.
 - Quota: per credential request and token windows, when the provider reports limits; unknown limits are stated as unknown, never guessed.
 - Degradation reporting so the UI can show which credential carried the request and why the others were skipped.
@@ -31,17 +32,31 @@ The name a client uses in `name/model` is the namespace the user chose when regi
 
 The earlier wording of this spec, "across credentials when the exposed model is a combo name", is retired: there is no second syntax and no group alias. A combo name was always this, the namespace, and the router already resolves it (one namespace to one credential, unique index `credentials_namespace_unique`).
 
-Consequence for the rest of the spec: with one name per account, candidate resolution yields one candidate, so "which of several accounts serves this name" does not arise. What routing still adds is health (lockout, quota and observability) plus the failure behaviour below.
+Consequence for the rest of the spec: asked by its name, a request resolves to one account, and what routing adds is health (lockout, quota and observability) plus the failure behaviour below. Asked by a cascade entry, the same resolution yields every credential that exposes that model, which is where rotation among them happens, ordered by priority.
 
-### Open: what happens when the named account fails
+### Decided by the product owner on 2026-10-01: three modes and an ordered cascade
 
-Not decided. The options and their cost:
+Routing has three modes, chosen per entry point (see below), with `normal` as the default:
 
-1. Explicit selection and nothing more: the name picks one account and, if it fails, the request fails with a clear error. This spec reduces to lockout, quota when a provider reports it, and observability, with no rotation and no chain. Smallest change, and the client keeps control of which account is used.
-2. Explicit selection plus optional failover: a name still belongs to one account, and the user may declare that two or more accounts share a public name to rotate and be prioritised among them. That is where priority and the chain live, and it relaxes the unique index, which is a schema decision.
-3. Automatic rotation inside one provider although the name belongs to one account: request `openai-personal/model` and, if that account is down, the gateway uses another OpenAI account without asking. Most convenient, and it breaks the explicit control this product is built on.
+1. `normal`: exactly what an API does today. The named account fails and the request fails with a clear message. No rotation.
+2. `auto model`: the intent of the request is kept and the cascade is followed. When the requested model fails or no credential exposes it, the gateway walks the ordered list and continues with the next entry that some credential exposes and that answers.
+3. `auto general`: the same cascade, plus the freedom to rotate the credential or the provider for the same model, and to go beyond the list when nothing in it works.
 
-Recommendation: option 1 for v1 with lockout and observability, and option 2 as the shape of a later version if the need appears. `lockout.ts`, `quota.ts` and `state.ts` are identical under all three; only `candidates.ts` and `verdict.ts` differ.
+The cascade is an ordered list of models the user already has registered, for example A = `gpt-6-luna`, B = `claude-sonnet-5.5`, C = `gpt-5.6-terra`. It is a preference order the user writes, and that is what keeps cost predictable: the router never invents a cheaper or a more expensive target, it walks the order it was given. The example the owner gave: a request for `raul/gpt-6-luna` fails, no other credential exposes `gpt-6-luna`, the list has C = `gpt-5.6-terra` and some credential exposes it, so the request continues there.
+
+Two consequences worth writing down:
+
+- A list entry is a model id, not a (credential, model) pair. Resolving it is the question the router already answers: which credentials expose this model. Rotation among several credentials of one provider therefore appears naturally, without a second syntax and without relaxing the unique index on the namespace.
+- The cascade can only act before the first byte. Once a stream started, the rule of spec 003 holds: no silent re-route, the failure is reported.
+
+### Open: the entry point and its profile
+
+The owner wants several entry points, "several APIs", one used by an agent and another by a service, each with its own mode and its own cascade. Two things are not decided:
+
+- What an entry point is exactly: its own client-facing key and endpoint, or a name the client selects on the one endpoint the gateway already serves. A key per consumer is the reading that fits "one for an agent, one for a service", and it is also the first client-facing authentication this product would have, which is a security decision of its own.
+- Whether the mode and the cascade are only per entry point or also overridable per request.
+
+Recommendation: the profile belongs to the entry point, and the entry point gets its own key. The first version of this can ship with a single entry point carrying the profile, which is what makes it shippable without opening the authentication question yet.
 
 ## Design
 
@@ -52,10 +67,13 @@ Recommendation: option 1 for v1 with lockout and observability, and option 2 as 
 
 ## Acceptance criteria
 
-- [ ] Two accounts of the same provider rotate deterministically according to the documented rule, proven by a test. Conditional on the open decision: under option 1 this criterion retires, because a name selects one account and there is nothing to rotate among; under option 2 it is written against the shared public name.
+- [ ] `normal` keeps today's behaviour exactly: the named account fails and the request fails with a clear message, with nothing else tried.
+- [ ] `auto model` walks the cascade in the order it was written and continues with the first entry that some credential exposes and that answers; when no entry works, one clear error names every attempt in order.
+- [ ] `auto general` also rotates the credential or the provider for the same model, and reaches beyond the list when nothing in it works.
+- [ ] The cascade never invents a target: only the entries the user wrote are tried, so the cost order is the user's and never the gateway's.
+- [ ] Two credentials that expose the same model are ordered deterministically by the documented rule, proven by a test.
 - [ ] A credential that fails N times consecutively is skipped for the cooldown and returns to service afterwards.
 - [ ] A quota exhausted credential is skipped, and a credential with unknown quota is used instead of being treated as exhausted.
-- [ ] The fallback chain is respected in order and its exhaustion produces one clear error naming every attempt. Conditional on the open decision: the chain only exists if option 2 is chosen.
 - [ ] A mid stream failure after the first byte does not re route silently; it is reported, and this behaviour is tested.
 - [ ] `GET /api/routing/state` exposes no secret and no model payload.
 - [ ] Specs 001, 002, 003 and 005 suites keep passing.
@@ -69,4 +87,4 @@ Recommendation: option 1 for v1 with lockout and observability, and option 2 as 
 
 ## Status
 
-pending, and blocked on one decision rather than on code: what happens when the named account fails, recorded under Decisions. The naming itself is settled. Everything that does not depend on that answer (lockout, quota when a provider reports it, and `GET /api/routing/state`) can be planned and built while it is decided.
+pending, and its design is captured: the naming is settled (the namespace is the custom name, one name per account) and the failure behaviour is decided (three modes plus an ordered cascade of models). What stays open is the entry point and its profile, recorded under Decisions, and it is a separate subject: several entry points with their own mode, cascade and probably their own client-facing key. That subject is registered as feature 21 so this spec keeps one atomic objective.
