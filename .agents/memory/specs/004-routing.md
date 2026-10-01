@@ -87,6 +87,13 @@ Recommendation: the profile belongs to the entry point, and the entry point gets
 
 ## Status
 
-in progress since 2026-10-01. First slice implemented and green: the pure core, `bll/routing/candidates.ts` (the ordered attempts of each mode, including the owner's example) and `bll/routing/verdict.ts` (the candidates removed for being out of service, with their reason), in 14 tests, with the red run recorded (reverting the cascade and the lockout check turns eight of them red). Next slices: the state tables and their writers, the lockout and quota rules, the router wired to the attempts, and `GET /api/routing/state`.
+in progress since 2026-10-01. Four slices implemented, each with the red run recorded and the whole gate green:
+
+1. `bll/routing/candidates.ts` and `bll/routing/verdict.ts`: the ordered attempts of each mode (including the owner's example) and the candidates removed for being out of service, as pure functions, 14 tests.
+2. `bll/routing/lockout.ts` and `bll/routing/quota.ts`: when a credential goes out of service (and the rule that a client abort never counts against it) and how long a reported window holds it, 15 tests.
+3. `dal/schema/routing.ts` with migration `0002`, reviewed in full before applying: `credential_lockouts`, `quota_usage` and `routing_state`, all additive, no `DROP`, no `RENAME`, no table rebuild.
+4. `dal/repositories/routing.repository.ts` (upsert per credential) and `bll/routing/state.ts` (rows into the state the verdict reads), 14 tests.
+
+Left: the router wired to the attempts (try the named candidate and, per the mode, move to the next before the first byte; one clear error naming every attempt when the list is exhausted), the writers that record an outcome and a failure, and `GET /api/routing/state`. The mode needs a home until feature 21 gives it one per entry point: the interim is a configuration value whose default is `normal`, which is today's behaviour, so nothing changes unless it is opted into.
 
 The design below was agreed before this and is not edited now that it runs: the naming (the namespace is the custom name, one name per account) and the failure behaviour (three modes over an ordered cascade of model ids the user writes) are recorded under Decisions. What stays open is the entry point and its profile, feature 21: several client facing APIs, one per consumer, each with its own mode and cascade and probably its own key.
