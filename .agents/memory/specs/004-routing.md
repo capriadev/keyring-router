@@ -87,4 +87,6 @@ Recommendation: the profile belongs to the entry point, and the entry point gets
 
 ## Status
 
-pending, and its design is captured: the naming is settled (the namespace is the custom name, one name per account) and the failure behaviour is decided (three modes plus an ordered cascade of models). What stays open is the entry point and its profile, recorded under Decisions, and it is a separate subject: several entry points with their own mode, cascade and probably their own client-facing key. That subject is registered as feature 21 so this spec keeps one atomic objective.
+in progress since 2026-10-01. First slice implemented and green: the pure core, `bll/routing/candidates.ts` (the ordered attempts of each mode, including the owner's example) and `bll/routing/verdict.ts` (the candidates removed for being out of service, with their reason), in 14 tests, with the red run recorded (reverting the cascade and the lockout check turns eight of them red). Next slices: the state tables and their writers, the lockout and quota rules, the router wired to the attempts, and `GET /api/routing/state`.
+
+The design below was agreed before this and is not edited now that it runs: the naming (the namespace is the custom name, one name per account) and the failure behaviour (three modes over an ordered cascade of model ids the user writes) are recorded under Decisions. What stays open is the entry point and its profile, feature 21: several client facing APIs, one per consumer, each with its own mode and cascade and probably its own key.

@@ -15,10 +15,9 @@ Update at session close. This is not a changelog: it is the state of the work.
 - M9 implemented and audited: seven of its ten criteria were verified by an independent lane and three need a browser. Spec 014 fixed H-B7 and H-B8, and its audit reproduced the red run exactly as written down. The residue of both audits is spec 015.
 
 ## Next up
-- Specs 017 to 020 are implemented and audited; every round found only minor findings and no blocking or important defect. The last round left three: one was dead code its own fix had created and is removed, and two are registered in 015 by the decision below.
-- The audit chain is closed by decision: findings of the same shape, a claim bigger than the code or a fix that closed the instance, are registered in spec 015 instead of chaining another fix spec; an important or blocking finding still opens its own spec.
-- Spec 015 holds the residue of the audits of 008, 014, 016 and 019, plus the thirteen provider fields still read twice and the invisible characters outside the rule: the fabricated tool call, the 404 echoing the id, the layout reserve, the three empty folders that need the user's word, and the browser walk.
-- M7 routing (spec 004) has its design captured: the naming is the custom namespace (one name per account) and the failure behaviour is three modes over an ordered cascade of models the user writes. What is open is feature 21, the entry point and its profile: several client facing APIs, one per consumer, each with its own mode and cascade. Spec 008 closes when its three browser-dependent criteria are walked.
+- M7 routing (spec 004) is in progress: the pure core (the three modes over the ordered cascade, and the verdict that removes what is out of service) is implemented and green. Next: the state tables and their writers, lockout and quota, the router wired to the attempts, and `GET /api/routing/state`.
+- Feature 21, the entry point and its profile (several client facing APIs, one per consumer, each with its own mode and cascade, probably its own key), has no spec yet, and its key would be the first client facing authentication of the product.
+- Spec 015 holds the residue of the five audits (the thirteen fields still read twice, the invisible characters outside the rule, the fabricated tool call, the 404 echoing the id, the layout reserve and the browser walk); the audit chain is closed by decision, and only an important or blocking finding opens a new fix spec.
 - User only: the browser walk of the panel, `kr service install` (elevation), the first run against a real provider key, the remote URL update, then merge into `main`, plus the two small repository decisions (the empty folders, untracking `next-env.d.ts`).
 
 ## Open decisions (unresolved, blocking or not)
