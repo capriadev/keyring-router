@@ -64,4 +64,9 @@ Both were offered and refused. Nothing new is added to the request; the model fi
 
 ## Status
 
-pending. Not started. The mode and the cascade live in `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` until this gives them a home per model; the change is inert by default, so nothing moves until a profile is created.
+in progress since 2026-10-02. Two slices implemented, each with the red run recorded and the gate green:
+
+1. `types/routing.ts` gains `RoutingProfile`, and `bll/routing/profile.ts` holds the pure core: `profileProblem` for what can be stored (a model, a known mode, a cascade whose entries are neither empty nor repeated) and `resolveProfile` for what a requested model gets (the stored profile, or the fallback when none exists), looked up by the model id alone. 9 tests.
+2. `dal/schema/routing.ts` gains `routing_profiles` and migration `0003_tired_wiccan.sql`, reviewed in full before applying: one `CREATE TABLE` and one `CREATE UNIQUE INDEX`, no `DROP`, no `RENAME`, no table rebuild, no foreign key. `dal/repositories/routing-profiles.repository.ts` reads, inserts and deletes by id, wired into `DalModule`. 6 tests, plus the migration specs updated for the new table and the new count.
+
+Left: wire the router and `ChatService` so `plan()` reads the profile resolved by the requested model, and the `GET/POST/DELETE /api/routing/profiles` surface with the `kr profile` commands. The change is inert by default: nothing a client uses today moves until a profile is created.

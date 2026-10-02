@@ -1,5 +1,5 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import type { RoutingOutcome } from '../../types/routing.js';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { RoutingMode, RoutingOutcome } from '../../types/routing.js';
 import { credentials } from './credentials.js';
 
 /**
@@ -53,3 +53,23 @@ export const routingState = sqliteTable(
 export type CredentialLockoutRow = typeof credentialLockouts.$inferSelect;
 export type QuotaUsageRow = typeof quotaUsage.$inferSelect;
 export type RoutingStateRow = typeof routingState.$inferSelect;
+
+/**
+ * The mode and the cascade that apply to one model, keyed by the model id alone. It is user data, like a
+ * policy: the gateway reads it to route and it survives independently of any credential, because the
+ * same model can be exposed by several names and they share this profile (the decision of spec 021).
+ * `cascade` is the ordered list the user wrote, stored as JSON text.
+ */
+export const routingProfiles = sqliteTable(
+  'routing_profiles',
+  {
+    id: text('id').primaryKey(),
+    providerModelId: text('provider_model_id').notNull(),
+    mode: text('mode').$type<RoutingMode>().notNull(),
+    cascade: text('cascade', { mode: 'json' }).$type<readonly string[]>().notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [uniqueIndex('routing_profiles_model_unique').on(table.providerModelId)],
+);
+
+export type RoutingProfileRow = typeof routingProfiles.$inferSelect;

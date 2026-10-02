@@ -13,6 +13,7 @@ import { CatalogRepository } from './repositories/catalog.repository.js';
 import { CredentialsRepository } from './repositories/credentials.repository.js';
 import { CREDENTIAL_SECRET_SALT_ID, InstallKeysRepository } from './repositories/install-keys.repository.js';
 import { PoliciesRepository } from './repositories/policies.repository.js';
+import { RoutingProfilesRepository } from './repositories/routing-profiles.repository.js';
 import { RoutingRepository } from './repositories/routing.repository.js';
 
 /** Owns the database connection and every repository. Only this layer touches Drizzle. */
@@ -26,6 +27,7 @@ import { RoutingRepository } from './repositories/routing.repository.js';
     PoliciesRepository,
     InstallKeysRepository,
     RoutingRepository,
+    RoutingProfilesRepository,
     {
       provide: SECRET_KEY_SOURCE,
       /**
@@ -43,6 +45,7 @@ import { RoutingRepository } from './repositories/routing.repository.js';
     PoliciesRepository,
     InstallKeysRepository,
     RoutingRepository,
+    RoutingProfilesRepository,
     SECRET_KEY_SOURCE,
   ],
 })

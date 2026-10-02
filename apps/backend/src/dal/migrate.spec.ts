@@ -48,6 +48,7 @@ describe('runMigrations', () => {
       'install_keys',
       'policies',
       'quota_usage',
+      'routing_profiles',
       'routing_state',
     ]);
     migrated.$client.close();
@@ -84,6 +85,13 @@ describe('runMigrations', () => {
       'last_reason',
       'updated_at',
     ]);
+    assert.deepEqual(columns('routing_profiles'), [
+      'id',
+      'provider_model_id',
+      'mode',
+      'cascade',
+      'created_at',
+    ]);
     migrated.$client.close();
   });
 
@@ -95,7 +103,7 @@ describe('runMigrations', () => {
 
     const migrated = createDatabase(path);
 
-    assert.equal(appliedMigrations(migrated), 3);
+    assert.equal(appliedMigrations(migrated), 4);
     migrated.$client.close();
   });
 });
