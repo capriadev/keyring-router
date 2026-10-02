@@ -46,6 +46,8 @@ const DOMAIN_ERROR_STATUS: Record<DomainErrorCode, number> = {
   secret_key_unavailable: 422,
   policy_not_found: 404,
   invalid_policy_rule: 400,
+  invalid_routing_profile: 400,
+  routing_profile_not_found: 404,
 };
 
 /** HTTP status per routing failure. A model the facade cannot serve is not a client mistake. */

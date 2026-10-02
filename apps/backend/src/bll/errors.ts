@@ -8,7 +8,9 @@ export type DomainErrorCode =
   | 'secret_undecryptable'
   | 'secret_key_unavailable'
   | 'policy_not_found'
-  | 'invalid_policy_rule';
+  | 'invalid_policy_rule'
+  | 'invalid_routing_profile'
+  | 'routing_profile_not_found';
 
 /**
  * Business failure. It carries a stable `code`; the HTTP status is a gateway concern, so bll never
@@ -104,5 +106,17 @@ export class PolicyNotFoundError extends DomainError {
 export class InvalidPolicyRuleError extends DomainError {
   constructor(message: string) {
     super('invalid_policy_rule', message);
+  }
+}
+
+export class InvalidRoutingProfileError extends DomainError {
+  constructor(message: string) {
+    super('invalid_routing_profile', message);
+  }
+}
+
+export class RoutingProfileNotFoundError extends DomainError {
+  constructor(profileId: string) {
+    super('routing_profile_not_found', `unknown routing profile: ${profileId}`);
   }
 }

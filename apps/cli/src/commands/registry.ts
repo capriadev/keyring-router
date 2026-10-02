@@ -3,6 +3,7 @@ import { credentialCommand } from './credentials.js';
 import { doctorCommand } from './doctor.js';
 import { modelsCommand, providersCommand } from './models.js';
 import { policyCommand } from './policies.js';
+import { profileCommand } from './profile.js';
 import { serveCommand } from './serve.js';
 import { serviceCommand } from './service.js';
 import { statusCommand, versionCommand } from './status.js';
@@ -23,6 +24,7 @@ const COMMANDS: readonly Command[] = [
   { name: 'models', summary: 'exposed models, or --catalog for the discovered ones', run: modelsCommand },
   { name: 'credential', summary: 'list, add, validate, refresh or rotate a credential', run: credentialCommand },
   { name: 'policy', summary: 'list, allow, deny or remove an exposure rule', run: policyCommand },
+  { name: 'profile', summary: 'list, add or remove a routing profile (mode and cascade per model)', run: profileCommand },
   { name: 'doctor', summary: 'check node, pepper, database and gateway', run: doctorCommand },
 ];
 

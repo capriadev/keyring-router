@@ -49,6 +49,13 @@ export const createPolicyBodySchema = z.object({
 /** `:id` of a credential or a policy. */
 export const idParamsSchema = z.object({ id: z.string().min(1) });
 
+/** `POST /api/routing/profiles`. Domain rules (known mode, non-empty unique cascade) belong to bll. */
+export const createRoutingProfileBodySchema = z.object({
+  providerModelId: z.string().min(1).max(200),
+  mode: z.enum(['normal', 'auto_model', 'auto_general']),
+  cascade: z.array(z.string().min(1)).default([]),
+});
+
 /** `GET /api/catalog?credentialId=` */
 export const catalogQuerySchema = z.object({ credentialId: z.string().min(1).optional() });
 
@@ -57,6 +64,8 @@ export type CreateCredentialBody = z.infer<typeof createCredentialBodySchema>;
 export type RotateSecretBody = z.infer<typeof rotateSecretBodySchema>;
 
 export type CreatePolicyBody = z.infer<typeof createPolicyBodySchema>;
+
+export type CreateRoutingProfileBody = z.infer<typeof createRoutingProfileBodySchema>;
 
 export type IdParams = z.infer<typeof idParamsSchema>;
 

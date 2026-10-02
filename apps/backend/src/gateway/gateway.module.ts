@@ -8,6 +8,7 @@ import { ModelsController } from './controllers/models.controller.js';
 import { PoliciesController } from './controllers/policies.controller.js';
 import { ProvidersController } from './controllers/providers.controller.js';
 import { RoutingController } from './controllers/routing.controller.js';
+import { RoutingProfilesController } from './controllers/routing-profiles.controller.js';
 import { V1ChatController } from './controllers/v1-chat.controller.js';
 import { V1ModelsController } from './controllers/v1-models.controller.js';
 
@@ -25,6 +26,7 @@ import { V1ModelsController } from './controllers/v1-models.controller.js';
     ModelsController,
     PoliciesController,
     RoutingController,
+    RoutingProfilesController,
     V1ModelsController,
     V1ChatController,
   ],

@@ -16,6 +16,8 @@ const STATUS_PER_CODE: Record<DomainErrorCode, number> = {
   secret_key_unavailable: 422,
   policy_not_found: 404,
   invalid_policy_rule: 400,
+  invalid_routing_profile: 400,
+  routing_profile_not_found: 404,
 };
 
 describe('resolveApiError', () => {

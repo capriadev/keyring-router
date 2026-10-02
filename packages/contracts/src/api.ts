@@ -163,6 +163,24 @@ export interface RoutingStateEntry {
 
 export type RoutingStateResponse = readonly RoutingStateEntry[];
 
+/** How a request may be served. `normal` behaves like any API: the named account fails and so does it. */
+export type RoutingMode = 'normal' | 'auto_model' | 'auto_general';
+
+/**
+ * The mode and the cascade that apply to one model, as the API serves them. Keyed by the model the
+ * client asks for, never by the name it used: two namespaces asking for the same model share it.
+ */
+export interface RoutingProfile {
+  readonly id: string;
+  readonly providerModelId: string;
+  readonly mode: RoutingMode;
+  /** The ordered list of model ids the user wrote, tried in that order. */
+  readonly cascade: readonly string[];
+  readonly createdAt: number;
+}
+
+export type RoutingProfilesResponse = readonly RoutingProfile[];
+
 /**
  * The stable codes a refusal can carry. A client switches on the code, never on the message: the message
  * is written for a human and may change, the code is part of the contract.
@@ -178,6 +196,8 @@ export type ApiErrorCode =
   | 'secret_key_unavailable'
   | 'policy_not_found'
   | 'invalid_policy_rule'
+  | 'invalid_routing_profile'
+  | 'routing_profile_not_found'
   | 'model_not_found'
   | 'chat_not_supported'
   | 'invalid_chat_request'

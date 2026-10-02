@@ -28,6 +28,8 @@ const ERROR_COPY = {
   secret_key_unavailable: 'La clave de cifrado del gateway no esta disponible.',
   policy_not_found: 'La regla de politica ya no existe.',
   invalid_policy_rule: 'La regla de politica no es valida.',
+  invalid_routing_profile: 'El perfil de ruteo no es valido.',
+  routing_profile_not_found: 'El perfil de ruteo ya no existe.',
   model_not_found: 'Ese modelo no esta disponible para el gateway.',
   chat_not_supported: 'El proveedor de ese modelo no soporta el protocolo de chat.',
   invalid_chat_request: 'La peticion de chat no cumple el contrato del gateway.',
