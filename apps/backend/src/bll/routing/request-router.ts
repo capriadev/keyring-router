@@ -11,13 +11,14 @@ import type { ChatFormat, ChatTranslator, TranslateRequestOptions } from '../../
 import type { Credential } from '../../types/credential.js';
 import type { ProviderFormat } from '../../types/provider-catalog.js';
 import type { AdapterTarget } from '../../types/provider.js';
-import type { RoutingAttempt, RoutingCandidate, RoutingMode, SkippedAttempt } from '../../types/routing.js';
+import type { RoutingAttempt, RoutingCandidate, RoutingMode, RoutingProfile, SkippedAttempt } from '../../types/routing.js';
 import { evaluateExposure } from '../catalog/policy.js';
 import { adapterTargetFor } from '../credentials/adapter-target.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
 import { buildAttempts } from './candidates.js';
 import { chatRequestTarget, providerChatProfile } from './chat-target.js';
 import { ChatNotSupportedError, ModelNotFoundError, RoutingError } from './errors.js';
+import { resolveProfile } from './profile.js';
 import { toRoutingState } from './state.js';
 import { applyServiceState } from './verdict.js';
 import {
@@ -43,10 +44,13 @@ export interface RouteInput {
 }
 
 /**
- * One request plus how it may be served: the mode and the cascade the user wrote. Both come from the
- * configuration until feature 21 gives them a home per entry point.
+ * One request plus how it may be served: the profiles the user wrote and the fallback for a model with
+ * none. The profiles are keyed by model, so the plan resolves the requested model against them; the
+ * mode and the cascade are the installation default, which is what an installation without any profile
+ * behaves as today.
  */
 export interface RoutePlanInput extends RouteInput {
+  readonly profiles: readonly RoutingProfile[];
   readonly mode: RoutingMode;
   readonly cascade: readonly string[];
 }
@@ -147,10 +151,18 @@ export class RequestRouter {
       throw new ModelNotFoundError(input.model);
     }
 
-    const attempts = buildAttempts({
+    // The profile is the property of the requested model, never of the name the client used: the same
+    // model asked under two names gets the same profile, and a model with none falls back to the
+    // installation default, which is what keeps an installation that wrote no profile unchanged.
+    const profile = resolveProfile(parts.providerModelId, input.profiles, {
       mode: input.mode,
-      requested: parts,
       cascade: input.cascade,
+    });
+
+    const attempts = buildAttempts({
+      mode: profile.mode,
+      requested: parts,
+      cascade: profile.cascade,
       exposed,
     });
 

@@ -102,7 +102,15 @@ describe('RequestRouter plan and per-attempt resolution', () => {
   });
 
   function planInput(overrides: Partial<RoutePlanInput> = {}): RoutePlanInput {
-    return { model: 'alpha/luna', clientFormat: 'openai', stream: false, mode: 'normal', cascade: [], ...overrides };
+    return {
+      model: 'alpha/luna',
+      clientFormat: 'openai',
+      stream: false,
+      profiles: [],
+      mode: 'normal',
+      cascade: [],
+      ...overrides,
+    };
   }
 
   it('normal mode tries only the named model, so it behaves like a direct API', () => {
@@ -148,6 +156,42 @@ describe('RequestRouter plan and per-attempt resolution', () => {
       plan.attempts.filter((attempt) => attempt.providerModelId === 'gpt-6-luna').map((attempt) => attempt.credentialId),
       ['cred-a', 'cred-c', 'cred-b'],
     );
+  });
+
+  it('takes the mode and the cascade of the requested model from its profile', () => {
+    // The fallback is normal, but the model luna has a profile that walks the cascade.
+    const plan = router.plan(
+      planInput({ profiles: [{ providerModelId: 'luna', mode: 'auto_model', cascade: ['gpt-6-luna'] }] }),
+    );
+
+    assert.deepEqual(trail(plan), [
+      'alpha/luna@cred-a requested',
+      'alpha/gpt-6-luna@cred-a cascade#0',
+      'beta/gpt-6-luna@cred-b cascade#0',
+    ]);
+  });
+
+  it('resolves the profile by the model part, so a namespaced key is not a profile', () => {
+    // Keyed by the model alone: the namespaced key never matches, so the fallback (normal) applies.
+    const plan = router.plan(
+      planInput({
+        model: 'alpha/gpt-6-luna',
+        profiles: [{ providerModelId: 'alpha/gpt-6-luna', mode: 'auto_general', cascade: [] }],
+      }),
+    );
+
+    assert.deepEqual(trail(plan), ['alpha/gpt-6-luna@cred-a requested']);
+  });
+
+  it('gives the same profile to the same model asked under another name', () => {
+    const profile = { providerModelId: 'gpt-6-luna', mode: 'auto_general' as const, cascade: [] };
+
+    const underBeta = router.plan(planInput({ model: 'beta/gpt-6-luna', profiles: [profile] }));
+    const underAlpha = router.plan(planInput({ model: 'alpha/gpt-6-luna', profiles: [profile] }));
+
+    // auto_general reaches beyond, so both names walk past their requested model, sharing the profile.
+    assert.ok(underBeta.attempts.length > 1);
+    assert.ok(underAlpha.attempts.length > 1);
   });
 
   it('removes a credential out of service and names why, without reordering the rest', () => {

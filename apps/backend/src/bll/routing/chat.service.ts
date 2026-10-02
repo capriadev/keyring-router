@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { APP_ENV, type AppEnv } from '../../config/env.js';
+import { RoutingProfilesRepository } from '../../dal/repositories/routing-profiles.repository.js';
 import type {
   ChatChunk,
   ChatRequest,
@@ -53,6 +54,7 @@ export class ChatService {
     @Inject(RequestRouter) private readonly router: RequestRouter,
     @Inject(APP_ENV) private readonly env: AppEnv,
     @Inject(RoutingStateService) private readonly state: RoutingStateService,
+    @Inject(RoutingProfilesRepository) private readonly profiles: RoutingProfilesRepository,
   ) {}
 
   async complete(input: ChatCallInput): Promise<ChatCompletion> {
@@ -104,12 +106,13 @@ export class ChatService {
     };
   }
 
-  /** The plan of one call: the mode and the cascade are the installation's, not the client's. */
+  /** The plan of one call: the profiles the user wrote, and the installation default as the fallback. */
   private plan(input: ChatCallInput, stream: boolean): RoutePlan {
     return this.router.plan({
       model: input.model,
       clientFormat: input.clientFormat,
       stream,
+      profiles: this.profiles.list(),
       mode: this.env.routingMode,
       cascade: this.env.routingCascade,
     });

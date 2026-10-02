@@ -8,6 +8,7 @@ import { createPairTranslator } from '../translation/pairs.js';
 import { ChatService } from './chat.service.js';
 import { AllAttemptsFailedError, InvalidChatRequestError } from './errors.js';
 import type { RequestRouter, ResolvedRoute } from './request-router.js';
+import type { RoutingProfilesRepository } from '../../dal/repositories/routing-profiles.repository.js';
 import type { RoutingStateService } from './state.service.js';
 
 /**
@@ -75,6 +76,9 @@ const ENV = { routingMode: 'normal', routingCascade: [] } as unknown as AppEnv;
 /** A state service that records nothing: the facade tests are about routing, not persistence. */
 const STATE = { recordServed: () => undefined, recordFailed: () => undefined } as unknown as RoutingStateService;
 
+/** No profiles and no state: the facade tests drive the plan through the fake router. */
+const PROFILES = { list: () => [] } as unknown as RoutingProfilesRepository;
+
 /**
  * The service over one fixed route, with the router reduced to the two calls the service makes: a plan
  * that offers the single attempt, and its resolution. The frame chain under test is the real one.
@@ -95,7 +99,7 @@ function serviceOver(requestId: string, frames: readonly unknown[]): ChatService
     resolveAttempt: () => route,
   } as unknown as RequestRouter;
 
-  return new ChatService(router, ENV, STATE);
+  return new ChatService(router, ENV, STATE, PROFILES);
 }
 
 async function drain(service: ChatService): Promise<ChatChunk[]> {
@@ -161,7 +165,7 @@ function cascade(routes: Record<string, ResolvedRoute>, state: RoutingStateServi
     resolveAttempt: (_requestId: string, attempt: { readonly credentialId: string }) => routes[attempt.credentialId],
   } as unknown as RequestRouter;
 
-  return new ChatService(router, ENV, state);
+  return new ChatService(router, ENV, state, PROFILES);
 }
 
 function makeRoute(requestId: string, credentialId: string, adapter: ResolvedRoute['adapter']): ResolvedRoute {
