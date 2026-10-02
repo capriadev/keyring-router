@@ -59,3 +59,14 @@ export interface SkippedAttempt {
   readonly attempt: RoutingAttempt;
   readonly reason: RoutingSkipReason;
 }
+
+/**
+ * The mode and the cascade that apply to one model. It is the property of the model the client asks
+ * for, not of the name it used: two namespaces that ask for the same model share its profile, which is
+ * the decision recorded in spec 021. `cascade` is the ordered list of model ids the user wrote.
+ */
+export interface RoutingProfile {
+  readonly providerModelId: string;
+  readonly mode: RoutingMode;
+  readonly cascade: readonly string[];
+}
