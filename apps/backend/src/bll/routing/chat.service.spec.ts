@@ -8,6 +8,7 @@ import { createPairTranslator } from '../translation/pairs.js';
 import { ChatService } from './chat.service.js';
 import { AllAttemptsFailedError, InvalidChatRequestError } from './errors.js';
 import type { RequestRouter, ResolvedRoute } from './request-router.js';
+import type { RoutingStateService } from './state.service.js';
 
 /**
  * What the gateway logged, captured instead of printed. Nest puts the hook there for exactly this, and
@@ -71,6 +72,9 @@ const REQUEST: ChatRequest = {
 
 const ENV = { routingMode: 'normal', routingCascade: [] } as unknown as AppEnv;
 
+/** A state service that records nothing: the facade tests are about routing, not persistence. */
+const STATE = { recordServed: () => undefined, recordFailed: () => undefined } as unknown as RoutingStateService;
+
 /**
  * The service over one fixed route, with the router reduced to the two calls the service makes: a plan
  * that offers the single attempt, and its resolution. The frame chain under test is the real one.
@@ -91,7 +95,7 @@ function serviceOver(requestId: string, frames: readonly unknown[]): ChatService
     resolveAttempt: () => route,
   } as unknown as RequestRouter;
 
-  return new ChatService(router, ENV);
+  return new ChatService(router, ENV, STATE);
 }
 
 async function drain(service: ChatService): Promise<ChatChunk[]> {
@@ -142,7 +146,7 @@ describe('the line the gateway writes for the frames it dropped', () => {
 });
 
 /** One attempt per credential, and the route that serves it. */
-function cascade(routes: Record<string, ResolvedRoute>): ChatService {
+function cascade(routes: Record<string, ResolvedRoute>, state: RoutingStateService = STATE): ChatService {
   const attempts = Object.keys(routes).map((credentialId) => ({
     credentialId,
     namespace: 'ns',
@@ -157,7 +161,7 @@ function cascade(routes: Record<string, ResolvedRoute>): ChatService {
     resolveAttempt: (_requestId: string, attempt: { readonly credentialId: string }) => routes[attempt.credentialId],
   } as unknown as RequestRouter;
 
-  return new ChatService(router, ENV);
+  return new ChatService(router, ENV, state);
 }
 
 function makeRoute(requestId: string, credentialId: string, adapter: ResolvedRoute['adapter']): ResolvedRoute {
@@ -279,5 +283,24 @@ describe('the facade walking the cascade', () => {
     });
 
     await assert.rejects(drainCascade(service), ProviderFailure);
+  });
+
+  it('records a failure for each candidate it spends and a success for the one that serves', async () => {
+    const calls: string[] = [];
+    const state = {
+      recordServed: (credentialId: string) => calls.push(`served:${credentialId}`),
+      recordFailed: (credentialId: string, kind: string) => calls.push(`failed:${credentialId}:${kind}`),
+    } as unknown as RoutingStateService;
+    const service = cascade(
+      {
+        c1: makeRoute('req-cascade', 'c1', failingAdapter(new ProviderFailure('probe', 'unreachable', 'down'))),
+        c2: makeRoute('req-cascade', 'c2', completingAdapter()),
+      },
+      state,
+    );
+
+    await service.complete(chatCall());
+
+    assert.deepEqual(calls, ['failed:c1:unreachable', 'served:c2']);
   });
 });

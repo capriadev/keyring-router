@@ -13,6 +13,7 @@ import type { RoutingAttempt } from '../../types/routing.js';
 import { countFrameDrops } from '../translation/frame-report.js';
 import { AllAttemptsFailedError, ClientDisconnectedError } from './errors.js';
 import { RequestRouter, type ResolvedRoute, type RouteInput, type RoutePlan } from './request-router.js';
+import { RoutingStateService } from './state.service.js';
 import { mapTranslationFailure } from './translation.js';
 
 export interface ChatCallInput extends RouteInput {
@@ -51,6 +52,7 @@ export class ChatService {
   constructor(
     @Inject(RequestRouter) private readonly router: RequestRouter,
     @Inject(APP_ENV) private readonly env: AppEnv,
+    @Inject(RoutingStateService) private readonly state: RoutingStateService,
   ) {}
 
   async complete(input: ChatCallInput): Promise<ChatCompletion> {
@@ -64,6 +66,8 @@ export class ChatService {
       try {
         const payload = await this.carry(route, providerCall(route, translated.body, false, input.signal));
 
+        this.state.recordServed(route.credentialId);
+
         return { route, response: this.translatedResponse(route, payload), warnings: translated.warnings };
       } catch (error) {
         // Only a provider failure earns the next candidate: a body the client sent badly would fail the
@@ -72,6 +76,7 @@ export class ChatService {
           throw error;
         }
 
+        this.state.recordFailed(attempt.credentialId, error.kind);
         failures.push(attempt);
       }
     }
@@ -151,6 +156,7 @@ export class ChatService {
           const frame = await withAbort(iterator.next(), input.signal);
 
           if (frame.done === true) {
+            this.state.recordServed(route.credentialId);
             return;
           }
 
@@ -165,6 +171,7 @@ export class ChatService {
           throw error;
         }
 
+        this.state.recordFailed(attempt.credentialId, error.kind);
         failures.push(attempt);
       } finally {
         // Closing the iterator is what stops the provider stream: a consumer that walked away must not
@@ -262,6 +269,6 @@ async function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> 
  * nobody left to answer. A translated frame that arrived malformed is a provider failure too, and it is
  * retried only before the first frame, because past it the request is already committed.
  */
-function isRetryable(error: unknown): boolean {
+function isRetryable(error: unknown): error is ProviderFailure {
   return error instanceof ProviderFailure;
 }

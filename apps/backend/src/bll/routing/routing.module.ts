@@ -5,6 +5,7 @@ import { BllModule } from '../bll.module.js';
 import { createTranslationRegistry } from '../translation/index.js';
 import { ChatService } from './chat.service.js';
 import { RequestRouter } from './request-router.js';
+import { RoutingStateService } from './state.service.js';
 import { CHAT_TRANSLATORS } from './translation.js';
 
 /**
@@ -20,8 +21,9 @@ import { CHAT_TRANSLATORS } from './translation.js';
   providers: [
     { provide: CHAT_TRANSLATORS, useFactory: () => createTranslationRegistry() },
     RequestRouter,
+    RoutingStateService,
     ChatService,
   ],
-  exports: [CHAT_TRANSLATORS, RequestRouter, ChatService],
+  exports: [CHAT_TRANSLATORS, RequestRouter, RoutingStateService, ChatService],
 })
 export class RoutingModule {}
