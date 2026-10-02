@@ -146,6 +146,24 @@ export type ModelsResponse = readonly ExposedModel[];
 export type PoliciesResponse = readonly PolicyRule[];
 
 /**
+ * One credential's routing state as the observability endpoint reports it. It names a credential id and
+ * a reason, never a value, so the answer is safe to read without redaction. A null bound means the
+ * credential is not in that state; an unknown quota is unknown, never exhausted.
+ */
+export interface RoutingStateEntry {
+  readonly credentialId: string;
+  /** Epoch ms the credential is skipped until for repeated failures, or null when in service. */
+  readonly lockedUntil: number | null;
+  /** Epoch ms its quota window is exhausted until, or null when unknown or available. */
+  readonly quotaExhaustedUntil: number | null;
+  /** The last outcome the gateway recorded for it, or null when it has no history yet. */
+  readonly lastOutcome: 'served' | 'skipped' | 'failed' | null;
+  readonly lastReason: string | null;
+}
+
+export type RoutingStateResponse = readonly RoutingStateEntry[];
+
+/**
  * The stable codes a refusal can carry. A client switches on the code, never on the message: the message
  * is written for a human and may change, the code is part of the contract.
  */

@@ -23,6 +23,7 @@ describe('RoutingStateService', () => {
     routing = new RoutingRepository(database.db);
     service = new RoutingStateService(routing);
     seedCredential(database, 'cred-1');
+    seedCredential(database, 'cred-2');
   });
 
   afterEach(() => {
@@ -79,5 +80,31 @@ describe('RoutingStateService', () => {
       lastReason: null,
       updatedAt: 2_000,
     });
+  });
+
+  it('reports the state of every credential it knows, one entry each, without secrets', () => {
+    service.recordFailed('cred-1', 'unreachable', 1_000);
+    service.recordServed('cred-2', 1_000);
+
+    assert.deepEqual(service.snapshot(1_000), [
+      {
+        credentialId: 'cred-1',
+        lockedUntil: null,
+        quotaExhaustedUntil: null,
+        lastOutcome: 'failed',
+        lastReason: 'unreachable',
+      },
+      {
+        credentialId: 'cred-2',
+        lockedUntil: null,
+        quotaExhaustedUntil: null,
+        lastOutcome: 'served',
+        lastReason: null,
+      },
+    ]);
+  });
+
+  it('reports nothing about a credential it has never seen', () => {
+    assert.deepEqual(service.snapshot(1_000), []);
   });
 });
