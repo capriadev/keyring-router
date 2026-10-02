@@ -19,5 +19,5 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 #18 Fix: the audit findings of spec 017 - the field reader reads once and the boundary refuses the control classes, with two overstated claims corrected [spec: 018-fix-audit-017-findings.md] [status: active]
 #19 Fix: the audit findings of spec 018 - the field reader reads once everywhere, the boundary closes the whole C group, and over-claims corrected [spec: 019-fix-audit-018-findings.md] [status: active]
 #20 Fix: the audit findings of spec 019 - the class of the double read closed, the whole C group at the boundary, and three over-claims corrected [spec: 020-fix-audit-019-findings.md] [status: active]
-#21 Routing profiles per entry point - several client facing APIs, each with its own mode and its own cascade, one for an agent and one for a service [spec: 021-routing-profiles-per-entry-point.md] [status: active]
+#21 Routing profiles per model - the mode and the cascade as a property of the model the client asks for, selected implicitly by name/model; no path, no header, no key [spec: 021-routing-profiles-per-entry-point.md] [status: active]
 #22 Residue of the M7 routing audit - the one major (dormant) defect and the six minor findings, two partial criteria, and what was fixed in the same session [spec: 022-m7-audit-residue.md] [status: active]

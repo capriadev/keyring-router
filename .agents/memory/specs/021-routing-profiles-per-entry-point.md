@@ -1,72 +1,67 @@
-# Routing profiles per entry point
+# Routing profiles per model
 
 Spec ID: 021
 Status: pending
 Branch: feature/v1-gateway
 Depends on: spec 004 (routing), spec 003 (the request router), spec 010 (shared contracts).
-Origin: spec 004 left "the entry point and its profile" open and recommended shipping the profile without opening the authentication question. The mode and the cascade live today in `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE`, an interim whose default is `normal`.
+Origin: spec 004 left the profile of a request open and put the mode and the cascade in KR_ROUTING_MODE and KR_ROUTING_CASCADE as an interim. The owner settled the selection question on 2026-10-02: there is no new selector. The client always sends model "name/model" like any OpenAI client, and the profile hangs from the model the client asks for, not from the name. The same name can ask for models with a different mode and cascade.
 
 ## Objective
 
-Give the mode and the cascade a home per entry point. The owner wants several client facing profiles, one for an agent and one for a service, each with its own mode and its own cascade, instead of one global setting. This spec turns the interim configuration into the named profiles the owner asked for, selected by the client on the surface the gateway already serves, and leaves the client facing key to a later decision.
+Give the mode and the cascade a home per model, instead of one global setting. A client keeps sending model "name/model" and nothing else changes: the router resolves the name to a credential (spec 004) and reads the profile of that model to route with it. The profile is the mode plus the ordered cascade the user wrote, the exact shape the router of spec 004 already consumes.
 
 ## Scope
 
 In scope:
 
-- The entry point entity: a name, a mode and a cascade, persisted in `dal/` and served by `/api` and the CLI, the same way a credential and a policy are.
-- Selection on the client surface: a client selects its profile by name, and a request that names none is served by the default entry point, which reproduces today's behaviour.
-- The router reads the profile instead of the global configuration. `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` seed the default entry point on a fresh database and are ignored afterwards.
-- Validation of a profile: the mode is one of the three, each cascade entry is a non empty provider model id, and the entries are unique.
-- Observability: the routing state and the resolved log line name the entry point and the mode that served.
+- A routing profile per model: the model it keys on, a mode and a cascade, persisted in dal/ and served by /api and the CLI, the same way a credential and a policy are.
+- Selection: implicit. The client names name/model; the router looks the profile up by the model part. No path, no header, no key.
+- The fallback when a model has no profile: the global default (normal today, from the configuration), so an installation that never creates a profile behaves exactly as it does now.
+- Validation of a profile: the mode is one of the three, each cascade entry is a non empty model id, and the entries are unique.
+- Observability: the routing state and the resolved log line name the model and the mode that served.
 
 Out of scope:
 
-- The client facing key. A name is not a secret, and the key is the first client facing authentication the product would have: a separate, later decision. This spec ships the profile without it.
+- Client facing authentication (a key): a separate, later decision. A name is not a secret and the gateway stays on loopback.
 - Per request overrides of the mode or the cascade.
-- Rate limiting, per entry point quotas, or multi user concerns.
+- Profiles keyed by namespace or by consumer.
 
 ## Decisions
 
-### Taken: the profile belongs to the entry point, and the client selects it by name
+### Taken by the owner on 2026-10-02: the profile is a property of the model
 
-The owner wants "several APIs", one per consumer. The first version expresses that as named profiles on the one surface the gateway serves, which is shippable without a new authentication mechanism: the gateway stays on loopback, where a name is enough to select a policy and nothing about it is a secret. The recommendation of spec 004 is followed: the profile belongs to the entry point.
+The client always sends model "name/model" and the backend routes. The profile hangs from the model the client asks for, not from the name: the same name can ask for models with a different mode and cascade. The earlier wording, "profiles per entry point, one per consumer", is retired: there is no entry point entity and no consumer key. A second reading, a profile per namespace, was offered and refused.
+Consequence, written so it is not a surprise later: two namespaces that ask for the same model share that model profile. If that ever needs to differ, the key becomes the namespaced id, which is a change to the key of one table, not a redesign.
 
-### Recommended, to confirm while implementing: selection by a path segment
+### Retired: selection by a path segment or a header
 
-The cleanest fit for "several APIs" is a distinct base URL per entry point: a client points at `http://127.0.0.1:4310/v1/<name>` and appends the protocol path it already appends (`/chat/completions`, `/messages`, `/models`). The default entry point serves `/v1/...` unchanged, so nothing a client uses today moves. Names that would collide with the protocol paths (`chat`, `messages`, `models`) are refused. The alternative, a header the client sends, is named here so the choice is visible; it is worse for a tool whose base URL is configured once.
-
-### Open: whether the entry point also carries its own key
-
-The reading that fits "one for an agent, one for a service" is a key per consumer, and it is the first client facing authentication this product would have, which is a security decision of its own. It is not taken here. If the owner wants it, it opens as its own spec, on top of this one.
+Both were offered and refused. Nothing new is added to the request; the model field is the only selector, which is what a router does.
 
 ## Design
 
-- `dal/`: an `entry_points` table (id, name unique, mode, cascade as JSON text, is_default, created_at), a repository, and one additive migration. No `DROP`, no `RENAME`, no table rebuild.
-- `bll/routing/`: `entry-point.ts` validates a profile (the mode against the three, the cascade against the same rules `candidates.ts` already assumes). The router takes the profile as an input instead of reading `AppEnv`, so the decision stays pure and testable.
-- `bll/routing/`: `ChatService` resolves the selected entry point's profile and passes it to `plan()`. The global configuration stops being read on the request path.
-- `gateway/`: `GET`, `POST` and `DELETE /api/entry-points`; the client surface resolves the name from the path (or the header, per the recommendation above) and falls back to the default.
-- `config/`: the seed of the default entry point from `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE`, applied once when the table is empty.
-- `cli`: `kr entry-point list`, `add`, `remove`, going through the same API as the panel.
+- `dal/`: a `routing_profiles` table (id, provider_model_id unique, mode, cascade as JSON text, created_at), a repository, and one additive migration. No `DROP`, no `RENAME`, no table rebuild.
+- `bll/routing/`: `profile.ts` validates a profile and resolves the profile for a requested model (its model part), falling back to the global default. The router takes the resolved profile as an input instead of reading `AppEnv`, so the decision stays pure and testable.
+- `bll/routing/`: `ChatService` resolves the profile for the requested model and passes it to `plan()`.
+- `gateway/`: `GET`, `POST` and `DELETE /api/routing/profiles`; the routing state names the model and the mode that served.
+- `cli`: `kr profile list`, `add`, `remove`, going through the same API as the panel.
+- `config/`: `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` remain the default of a model with no profile (`normal`, empty cascade), so nothing changes unless a profile is created.
 
 ## Acceptance criteria
 
-- [ ] A request served under entry point A uses A's mode and A's cascade; under B, B's.
-- [ ] A request that names no entry point is served by the default, which reproduces today's behaviour (`normal`, the named account and nothing else).
-- [ ] An unknown entry point name is refused the same way an unknown model is: one answer, with no hint of which names exist.
-- [ ] Once entry points exist, the mode and the cascade are no longer read from the global configuration on the request path.
-- [ ] On a fresh database, `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` seed the default entry point; an installation that had set them keeps behaving the same.
+- [ ] A request for a model that has a profile uses its mode and cascade; a request for a model without one behaves as today (`normal`, the named account and nothing else).
+- [ ] The profile is looked up by the model part of `name/model`, independent of the name; two namespaces asking for the same model share its profile (the decision, proven by a test).
+- [ ] An invalid profile (unknown mode, empty entry, duplicate entry) is refused with a clear message and not stored.
 - [ ] The migration is additive: a database created by spec 004 migrates without losing credentials, catalog rows, policies or routing state.
-- [ ] `GET /api/routing/state` names the entry point and the mode that served a request.
+- [ ] `GET /api/routing/state` names the model and the mode that served.
 - [ ] Specs 001 to 004 and 022 suites keep passing.
 - [ ] An independent audit reproduces every criterion above.
 
 ## Risks
 
-- A profile selected by a name the client sends is not authentication. The gateway must stay on loopback until the key spec, and this must be said where a reader will see it.
-- Moving the mode out of the configuration can change behaviour for an installation that set it. Seeding the default entry point from the configuration is what keeps it stable, and it is an acceptance criterion.
-- The default entry point's cascade is the one that already ships; the seed copies it rather than asking for it again.
+- Sharing a profile across namespaces for the same model is the confirmed decision; it is in the criteria so it is not rediscovered as a surprise.
+- Model ids differ per provider, so a profile written for one provider's id does not apply to another's id for the same concept; the cascade is written in ids the user registered, which spec 004 already requires.
+- The cascade must not invent a target: only the entries the user wrote are tried, the rule of spec 004, unchanged.
 
 ## Status
 
-pending. Not started. The mode and the cascade live in `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` until this spec gives them their home; the change is deliberately inert by default, so nothing a client uses today moves until an entry point is created.
+pending. Not started. The mode and the cascade live in `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE` until this gives them a home per model; the change is inert by default, so nothing moves until a profile is created.
