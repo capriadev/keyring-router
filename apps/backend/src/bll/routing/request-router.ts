@@ -4,16 +4,22 @@ import { SECRET_KEY_SOURCE, type SecretKeySource } from '../../config/secret-key
 import { CatalogRepository } from '../../dal/repositories/catalog.repository.js';
 import { CredentialsRepository } from '../../dal/repositories/credentials.repository.js';
 import { PoliciesRepository } from '../../dal/repositories/policies.repository.js';
+import { RoutingRepository } from '../../dal/repositories/routing.repository.js';
 import type { ProtocolAdapter, ProtocolRequestTarget } from '../../integrations/providers/protocol-adapter.js';
 import type { ChatCapableAdapter } from '../../types/chat-transport.js';
 import type { ChatFormat, ChatTranslator, TranslateRequestOptions } from '../../types/chat.js';
+import type { Credential } from '../../types/credential.js';
 import type { ProviderFormat } from '../../types/provider-catalog.js';
 import type { AdapterTarget } from '../../types/provider.js';
+import type { RoutingAttempt, RoutingCandidate, RoutingMode, SkippedAttempt } from '../../types/routing.js';
 import { evaluateExposure } from '../catalog/policy.js';
 import { adapterTargetFor } from '../credentials/adapter-target.js';
 import { ProviderRegistry } from '../providers/provider-registry.js';
+import { buildAttempts } from './candidates.js';
 import { chatRequestTarget, providerChatProfile } from './chat-target.js';
 import { ChatNotSupportedError, ModelNotFoundError, RoutingError } from './errors.js';
+import { toRoutingState } from './state.js';
+import { applyServiceState } from './verdict.js';
 import {
   CHAT_TRANSLATORS,
   translatorFor,
@@ -34,6 +40,28 @@ export interface RouteInput {
   /** The format the client speaks, decided by the endpoint that served the request. */
   readonly clientFormat: ChatFormat;
   readonly stream: boolean;
+}
+
+/**
+ * One request plus how it may be served: the mode and the cascade the user wrote. Both come from the
+ * configuration until feature 21 gives them a home per entry point.
+ */
+export interface RoutePlanInput extends RouteInput {
+  readonly mode: RoutingMode;
+  readonly cascade: readonly string[];
+}
+
+/**
+ * What the router decided before anything is sent: the ordered attempts that remain in service and the
+ * ones skipped with their reason. It names credentials and models only, so it can be logged or
+ * reported as is.
+ */
+export interface RoutePlan {
+  readonly requestId: string;
+  /** The namespace of the model the client asked for, which the request is scoped to. */
+  readonly namespace: string;
+  readonly attempts: readonly RoutingAttempt[];
+  readonly skipped: readonly SkippedAttempt[];
 }
 
 /**
@@ -71,6 +99,7 @@ export class RequestRouter {
     @Inject(CredentialsRepository) private readonly credentials: CredentialsRepository,
     @Inject(CatalogRepository) private readonly catalog: CatalogRepository,
     @Inject(PoliciesRepository) private readonly policies: PoliciesRepository,
+    @Inject(RoutingRepository) private readonly routing: RoutingRepository,
     @Inject(ProviderRegistry) private readonly registry: ProviderRegistry,
     @Inject(SECRET_KEY_SOURCE) private readonly keySource: SecretKeySource,
     @Inject(CHAT_TRANSLATORS) private readonly translators: ChatTranslationPort,
@@ -89,6 +118,72 @@ export class RequestRouter {
 
       throw error;
     }
+  }
+
+  /**
+   * The plan of one request: every candidate it may be served by, in the order they would be tried,
+   * with the ones out of service removed. The mode and the cascade come from the caller (configuration
+   * for now, per entry point later); the state comes from the store. Nothing is sent here, so the whole
+   * decision is observable before the first byte.
+   */
+  plan(input: RoutePlanInput): RoutePlan {
+    const requestId = randomUUID();
+    const parts = splitNamespacedModelId(input.model);
+
+    if (parts === null) {
+      throw new ModelNotFoundError(input.model);
+    }
+
+    const exposed = this.exposedCandidates();
+    const requested = exposed.find(
+      (candidate) => candidate.namespace === parts.namespace && candidate.providerModelId === parts.providerModelId,
+    );
+
+    // A requested model that is not an exposed candidate is unknown: either the namespace does not
+    // exist, the model is not in the catalog, or the policy hides it. The three are one answer, and it
+    // is why a mode that reaches beyond the cascade can never serve a hidden model: the requested one
+    // is checked here, before the plan is built, and never falls through to a different model.
+    if (requested === undefined) {
+      throw new ModelNotFoundError(input.model);
+    }
+
+    const attempts = buildAttempts({
+      mode: input.mode,
+      requested: parts,
+      cascade: input.cascade,
+      exposed,
+    });
+
+    const now = Date.now();
+    const state = toRoutingState({
+      lockouts: this.routing.listLockouts(),
+      quotas: this.routing.listQuotas(),
+      now,
+    });
+    const verdict = applyServiceState({ attempts, state, now });
+
+    // Identifiers only: the mode, what will be tried and what was skipped, never a value.
+    this.logger.log(
+      `route request=${requestId} outcome=planned model=${input.model} mode=${input.mode}` +
+        ` attempts=${verdict.attempts.length} skipped=${verdict.skipped.length}`,
+    );
+
+    return { requestId, namespace: parts.namespace, attempts: verdict.attempts, skipped: verdict.skipped };
+  }
+
+  /**
+   * Resolves one planned attempt into everything the transport needs. The credential is looked up by id
+   * (a cascade entry may name another account, even another namespace) and the model id is the exact
+   * provider model of the attempt, never re-split from the client's text.
+   */
+  resolveAttempt(requestId: string, attempt: RoutingAttempt, input: RouteInput): ResolvedRoute {
+    const credential = this.credentials.findById(attempt.credentialId);
+
+    if (credential === undefined) {
+      throw new ModelNotFoundError(input.model);
+    }
+
+    return this.buildRoute(requestId, credential, attempt.providerModelId, input);
   }
 
   private decide(requestId: string, input: RouteInput): ResolvedRoute {
@@ -114,16 +209,24 @@ export class RequestRouter {
 
     // The listing and the routing evaluate the same function over the same rules: a model the listing
     // hides is not routable, and a caller cannot tell a hidden model from an unknown one.
-    const exposed = evaluateExposure(this.policies.list(), {
-      credentialId: credential.id,
-      namespacedId: input.model,
-    });
-
-    if (!exposed) {
+    if (!this.isExposed(credential.id, input.model)) {
       throw new ModelNotFoundError(input.model);
     }
 
-    const profile = providerChatProfile(credential.providerId, parts.providerModelId);
+    return this.buildRoute(requestId, credential, parts.providerModelId, input);
+  }
+
+  /**
+   * Turns one credential and one provider model into a resolved route. It is the single assembly point
+   * for both the direct path and each attempt of the cascade, so the two can never drift apart.
+   */
+  private buildRoute(
+    requestId: string,
+    credential: Credential,
+    providerModelId: string,
+    input: RouteInput,
+  ): ResolvedRoute {
+    const profile = providerChatProfile(credential.providerId, providerModelId);
     const pair: TranslationPair = {
       from: input.clientFormat,
       to: translatedFormat(profile.format, credential.providerId),
@@ -141,14 +244,14 @@ export class RequestRouter {
       requestId,
       model: input.model,
       namespace: credential.namespace,
-      providerModelId: parts.providerModelId,
+      providerModelId,
       credentialId: credential.id,
       providerId: credential.providerId,
       providerFormat: profile.format,
       pair,
       translator,
       translateOptions: {
-        model: parts.providerModelId,
+        model: providerModelId,
         stream: input.stream,
         unsupportedParams: profile.declared?.unsupportedParams ?? [],
         ...(profile.requestDefaults === undefined ? {} : { requestDefaults: profile.requestDefaults }),
@@ -156,6 +259,39 @@ export class RequestRouter {
       adapter: chatTransport(this.registry, profile.format, credential.providerId),
       target: chatRequestTarget(credential.providerId, credentialTarget),
     };
+  }
+
+  /** Whether one credential's model passes the policy, over the same rules the listing uses. */
+  private isExposed(credentialId: string, namespacedId: string): boolean {
+    return evaluateExposure(this.policies.list(), { credentialId, namespacedId });
+  }
+
+  /**
+   * Every exposed (credential, model) pair as a candidate. The credential order and the catalog order
+   * are preserved, so two credentials exposing the same model stay deterministic, and a model the
+   * policy hides never enters the list: the plan is only ever built from what a caller could see.
+   */
+  private exposedCandidates(): RoutingCandidate[] {
+    const rules = this.policies.list();
+    const candidates: RoutingCandidate[] = [];
+
+    for (const credential of this.credentials.list()) {
+      for (const model of this.catalog.listByCredential(credential.id)) {
+        const namespacedId = `${credential.namespace}/${model.providerModelId}`;
+
+        if (evaluateExposure(rules, { credentialId: credential.id, namespacedId })) {
+          candidates.push({
+            credentialId: credential.id,
+            namespace: credential.namespace,
+            providerId: credential.providerId,
+            providerModelId: model.providerModelId,
+            namespacedId,
+          });
+        }
+      }
+    }
+
+    return candidates;
   }
 }
 
