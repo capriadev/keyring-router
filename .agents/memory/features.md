@@ -1,6 +1,6 @@
 # Features - SDD index
 
-last_id: 21
+last_id: 22
 
 <!--
 One line per feature. Planned features may be registered here without a spec yet (status: pending); a spec is opened when the feature is planned and ready to develop. When a feature is COMPLETE: remove its line here and mark the spec status as completed. SPECS ARE NEVER DELETED - specs/ is a permanent registry, the numbering exists for that. Never reuse an ID; last_id only grows.
@@ -20,3 +20,4 @@ Format: #<id> <name> - <one-line summary> [spec: <file>] [status: pending|active
 #19 Fix: the audit findings of spec 018 - the field reader reads once everywhere, the boundary closes the whole C group, and over-claims corrected [spec: 019-fix-audit-018-findings.md] [status: active]
 #20 Fix: the audit findings of spec 019 - the class of the double read closed, the whole C group at the boundary, and three over-claims corrected [spec: 020-fix-audit-019-findings.md] [status: active]
 #21 Routing profiles per entry point - several client facing APIs, each with its own mode and its own cascade, one for an agent and one for a service [no spec yet] [status: pending]
+#22 Residue of the M7 routing audit - the one major (dormant) defect and the six minor findings, two partial criteria, and what was fixed in the same session [spec: 022-m7-audit-residue.md] [status: active]
