@@ -61,7 +61,7 @@ describe('RoutingRepository', () => {
     );
 
     assert.deepEqual(repository.listQuotas(), [
-      { credentialId: 'cred-1', remainingRequests: 0, remainingTokens: null, resetAt: 1_000 },
+      { credentialId: 'cred-1', remainingRequests: 0, remainingTokens: null, resetAt: 1_000, observedAt: 100 },
     ]);
   });
 
@@ -70,7 +70,7 @@ describe('RoutingRepository', () => {
     repository.saveQuota({ credentialId: 'cred-1', remainingRequests: 0, remainingTokens: 0, resetAt: 900 }, 200);
 
     assert.deepEqual(repository.listQuotas(), [
-      { credentialId: 'cred-1', remainingRequests: 0, remainingTokens: 0, resetAt: 900 },
+      { credentialId: 'cred-1', remainingRequests: 0, remainingTokens: 0, resetAt: 900, observedAt: 200 },
     ]);
   });
 

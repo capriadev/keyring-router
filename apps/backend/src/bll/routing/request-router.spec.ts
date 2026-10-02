@@ -134,6 +134,22 @@ describe('RequestRouter plan and per-attempt resolution', () => {
     ]);
   });
 
+  it('orders two credentials that expose the same model by registration time, then by namespace', () => {
+    // A third credential registered at the same instant as cred-a, with a namespace that sorts after it.
+    // cred-b registered later, so it comes after both whatever its namespace.
+    credentials.insert(credential({ id: 'cred-c', namespace: 'gamma', createdAt: 1 }));
+    catalog.replaceForCredential('cred-c', [
+      { providerModelId: 'gpt-6-luna', displayName: 'gpt-6-luna', sizeBytes: null, family: null, providerModifiedAt: null, discoveredAt: 1 },
+    ]);
+
+    const plan = router.plan(planInput({ mode: 'auto_model', cascade: ['gpt-6-luna'] }));
+
+    assert.deepEqual(
+      plan.attempts.filter((attempt) => attempt.providerModelId === 'gpt-6-luna').map((attempt) => attempt.credentialId),
+      ['cred-a', 'cred-c', 'cred-b'],
+    );
+  });
+
   it('removes a credential out of service and names why, without reordering the rest', () => {
     routing.saveLockout(
       { credentialId: 'cred-b', consecutiveFailures: 5, lockedUntil: Date.now() + 60_000 },

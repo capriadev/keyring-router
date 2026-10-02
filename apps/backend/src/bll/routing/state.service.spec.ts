@@ -86,7 +86,7 @@ describe('RoutingStateService', () => {
     service.recordFailed('cred-1', 'unreachable', 1_000);
     service.recordServed('cred-2', 1_000);
 
-    assert.deepEqual(service.snapshot(1_000), [
+    assert.deepEqual(service.snapshot(), [
       {
         credentialId: 'cred-1',
         lockedUntil: null,
@@ -105,6 +105,6 @@ describe('RoutingStateService', () => {
   });
 
   it('reports nothing about a credential it has never seen', () => {
-    assert.deepEqual(service.snapshot(1_000), []);
+    assert.deepEqual(service.snapshot(), []);
   });
 });

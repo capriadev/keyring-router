@@ -11,12 +11,18 @@ export interface LockoutRecord {
   readonly lockedUntil: number | null;
 }
 
-/** The last quota window reported for one credential. A null is an unknown, never a zero. */
-export interface QuotaRecord {
+/** The quota window of one credential, without the instant it was seen. A null is an unknown, not a zero. */
+export interface QuotaWindow {
   readonly credentialId: string;
   readonly remainingRequests: number | null;
   readonly remainingTokens: number | null;
   readonly resetAt: number | null;
+}
+
+/** The last quota window read back for one credential, with the instant it was observed. */
+export interface QuotaRecord extends QuotaWindow {
+  /** Epoch ms the window was observed, which is what a hold of unknown length is measured from. */
+  readonly observedAt: number;
 }
 
 /** The last thing that happened to one credential, as the observability endpoint reports it. */
@@ -71,13 +77,14 @@ export class RoutingRepository {
         remainingRequests: quotaUsage.remainingRequests,
         remainingTokens: quotaUsage.remainingTokens,
         resetAt: quotaUsage.resetAt,
+        observedAt: quotaUsage.observedAt,
       })
       .from(quotaUsage)
       .orderBy(asc(quotaUsage.credentialId))
       .all();
   }
 
-  saveQuota(record: QuotaRecord, observedAt: number): void {
+  saveQuota(record: QuotaWindow, observedAt: number): void {
     this.db
       .insert(quotaUsage)
       .values({ ...record, observedAt })

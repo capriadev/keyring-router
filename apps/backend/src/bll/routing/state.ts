@@ -5,8 +5,6 @@ import { quotaExhaustedUntil } from './quota.js';
 export interface ServiceStateInput {
   readonly lockouts: readonly LockoutRecord[];
   readonly quotas: readonly QuotaRecord[];
-  /** Passed in, because a quota window is only exhausted relative to an instant. */
-  readonly now: number;
 }
 
 /**
@@ -26,13 +24,16 @@ export function toRoutingState(input: ServiceStateInput): RoutingState {
   }
 
   for (const quota of input.quotas) {
+    // The window is held from the instant it was observed, never from the instant it is read: a hold
+    // recomputed at read time would slide forward on every request and never expire. The verdict is
+    // what compares the resulting absolute bound against the request's own clock.
     const until = quotaExhaustedUntil(
       {
         remainingRequests: quota.remainingRequests,
         remainingTokens: quota.remainingTokens,
         resetAt: quota.resetAt,
       },
-      input.now,
+      quota.observedAt,
     );
 
     services.set(quota.credentialId, {

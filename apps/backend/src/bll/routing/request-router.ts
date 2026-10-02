@@ -158,7 +158,6 @@ export class RequestRouter {
     const state = toRoutingState({
       lockouts: this.routing.listLockouts(),
       quotas: this.routing.listQuotas(),
-      now,
     });
     const verdict = applyServiceState({ attempts, state, now });
 

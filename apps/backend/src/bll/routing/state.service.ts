@@ -49,11 +49,10 @@ export class RoutingStateService {
    * observability endpoint. It reuses the same assembly the verdict reads, so what a report shows is
    * exactly what the next request will act on, and it carries no secret: a credential id and a reason.
    */
-  snapshot(now: number = Date.now()): RoutingStateEntry[] {
+  snapshot(): RoutingStateEntry[] {
     const state = toRoutingState({
       lockouts: this.routing.listLockouts(),
       quotas: this.routing.listQuotas(),
-      now,
     });
     const outcomes = new Map(this.routing.listOutcomes().map((row) => [row.credentialId, row]));
     const known = [...new Set([...state.services.keys(), ...outcomes.keys()])].sort();

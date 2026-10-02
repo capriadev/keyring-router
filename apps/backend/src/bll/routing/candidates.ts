@@ -13,8 +13,9 @@ export interface AttemptsInput {
   readonly cascade: readonly string[];
   /**
    * Every exposed (credential, model) pair, in the order the caller decided. The order is preserved
-   * and is what makes two credentials that expose the same model deterministic: the repository returns
-   * them by registration, then by id.
+   * and is what makes two credentials that expose the same model deterministic: `credentials.list()`
+   * returns them by registration time and then by namespace, and each credential's models by provider
+   * model id. The router keeps that order and never sorts it, so the tie break is the repository's.
    */
   readonly exposed: readonly RoutingCandidate[];
 }
