@@ -87,13 +87,17 @@ Recommendation: the profile belongs to the entry point, and the entry point gets
 
 ## Status
 
-in progress since 2026-10-01. Four slices implemented, each with the red run recorded and the whole gate green:
+in progress since 2026-10-01. Eight slices implemented, each with the red run recorded and the whole gate green:
 
 1. `bll/routing/candidates.ts` and `bll/routing/verdict.ts`: the ordered attempts of each mode (including the owner's example) and the candidates removed for being out of service, as pure functions, 14 tests.
 2. `bll/routing/lockout.ts` and `bll/routing/quota.ts`: when a credential goes out of service (and the rule that a client abort never counts against it) and how long a reported window holds it, 15 tests.
 3. `dal/schema/routing.ts` with migration `0002`, reviewed in full before applying: `credential_lockouts`, `quota_usage` and `routing_state`, all additive, no `DROP`, no `RENAME`, no table rebuild.
 4. `dal/repositories/routing.repository.ts` (upsert per credential) and `bll/routing/state.ts` (rows into the state the verdict reads), 14 tests.
+5. `bll/routing/request-router.ts`: `plan()` (mode, cascade and state into the ordered attempts plus the skipped ones) and `resolveAttempt()` (a credential by id, so a cascade entry may name another account), sharing `buildRoute()` with the direct path, 8 tests.
+6. `bll/routing/chat.service.ts`: the facade walks the attempts and only advances before the first frame of the current one; one clear error names every attempt when the list is exhausted. The mode and the cascade live in `KR_ROUTING_MODE` and `KR_ROUTING_CASCADE`, defaulting to `normal`. 5 tests.
+7. `bll/routing/state.service.ts`: the single writer of the routing tables (the lockout rule applied in one place; a client abort never counts), wired into the facade. 5 tests.
+8. `GET /api/routing/state` (no secrets) via `RoutingStateService.snapshot()`, reusing the same assembly the verdict reads. 2 tests.
 
-Left: the router wired to the attempts (try the named candidate and, per the mode, move to the next before the first byte; one clear error naming every attempt when the list is exhausted), the writers that record an outcome and a failure, and `GET /api/routing/state`. The mode needs a home until feature 21 gives it one per entry point: the interim is a configuration value whose default is `normal`, which is today's behaviour, so nothing changes unless it is opted into.
+Left: a provider that reports its window in the response headers is not read yet, so quota only carries what is stored and a window is never observed from a live reply; that is the one part of the failure behaviour still to wire, and it needs a header parser per provider. The mode needs a home until feature 21 gives it one per entry point: the interim is a configuration value whose default is `normal`, which is today's behaviour, so nothing changes unless it is opted into.
 
 The design below was agreed before this and is not edited now that it runs: the naming (the namespace is the custom name, one name per account) and the failure behaviour (three modes over an ordered cascade of model ids the user writes) are recorded under Decisions. What stays open is the entry point and its profile, feature 21: several client facing APIs, one per consumer, each with its own mode and cascade and probably its own key.
