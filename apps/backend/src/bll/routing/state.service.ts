@@ -2,13 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { RoutingStateEntry } from '@keyring-router/contracts';
 import { RoutingRepository } from '../../dal/repositories/routing.repository.js';
 import type { ProviderErrorKind } from '../../types/provider.js';
-import {
-  DEFAULT_LOCKOUT_POLICY,
-  IN_SERVICE,
-  recordFailure,
-  recordSuccess,
-  type LockoutPolicy,
-} from './lockout.js';
+import { DEFAULT_LOCKOUT_POLICY, IN_SERVICE, recordFailure, recordSuccess } from './lockout.js';
 import { toRoutingState } from './state.js';
 
 /**
@@ -21,10 +15,7 @@ import { toRoutingState } from './state.js';
  */
 @Injectable()
 export class RoutingStateService {
-  constructor(
-    @Inject(RoutingRepository) private readonly routing: RoutingRepository,
-    private readonly policy: LockoutPolicy = DEFAULT_LOCKOUT_POLICY,
-  ) {}
+  constructor(@Inject(RoutingRepository) private readonly routing: RoutingRepository) {}
 
   /** A call the credential answered. Recovery is immediate and total. */
   recordServed(credentialId: string, now: number = Date.now()): void {
@@ -38,7 +29,7 @@ export class RoutingStateService {
    */
   recordFailed(credentialId: string, kind: ProviderErrorKind, now: number = Date.now()): void {
     const current = this.routing.listLockouts().find((row) => row.credentialId === credentialId) ?? IN_SERVICE;
-    const next = recordFailure(current, this.policy, now, kind);
+    const next = recordFailure(current, DEFAULT_LOCKOUT_POLICY, now, kind);
 
     this.routing.saveLockout({ credentialId, ...next }, now);
     this.routing.recordOutcome({ credentialId, lastOutcome: 'failed', lastReason: kind, updatedAt: now });

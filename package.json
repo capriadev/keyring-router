@@ -12,6 +12,7 @@
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "dev:backend": "npm run start:dev --workspace=apps/backend",
     "build": "npm run build --workspaces --if-present",
+    "verify:boot": "npm run verify:boot --workspace apps/backend",
     "build:frontend": "npm run build --workspace=apps/frontend",
     "build:backend": "npm run build --workspace=apps/backend",
     "start:frontend": "npm run start --workspace=apps/frontend",
