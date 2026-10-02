@@ -53,6 +53,7 @@ const ROUTING_ERROR_STATUS: Record<RoutingErrorCode, number> = {
   model_not_found: 404,
   chat_not_supported: 422,
   invalid_chat_request: 400,
+  all_attempts_failed: 502,
 };
 
 /**

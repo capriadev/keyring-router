@@ -4,7 +4,11 @@
  * `bll/routing/`, and the gateway owns the HTTP status of each one. Every message names identifiers
  * only: a namespaced model id, a provider id or a format, never a credential value.
  */
-export type RoutingErrorCode = 'model_not_found' | 'chat_not_supported' | 'invalid_chat_request';
+export type RoutingErrorCode =
+  | 'model_not_found'
+  | 'chat_not_supported'
+  | 'invalid_chat_request'
+  | 'all_attempts_failed';
 
 export class RoutingError extends Error {
   readonly code: RoutingErrorCode;
@@ -38,6 +42,18 @@ export class ChatNotSupportedError extends RoutingError {
 export class InvalidChatRequestError extends RoutingError {
   constructor(detail: string) {
     super('invalid_chat_request', detail);
+  }
+}
+
+/**
+ * Every candidate the plan offered failed at the provider, so there is nothing left to try. The detail
+ * names each attempt (its namespaced id and provider) and never a credential value, so a client learns
+ * what was tried without learning how to reach any account.
+ */
+export class AllAttemptsFailedError extends RoutingError {
+  constructor(attempts: readonly { readonly namespacedId: string; readonly providerId: string }[]) {
+    const named = attempts.map((attempt) => `${attempt.namespacedId} (${attempt.providerId})`).join(', ');
+    super('all_attempts_failed', `every candidate failed: ${named}`);
   }
 }
 

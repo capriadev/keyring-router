@@ -19,8 +19,32 @@ describe('loadEnv', () => {
       host: '0.0.0.0',
       port: 5000,
       dbPath: resolve(REPO_ROOT, 'temp/other.db'),
+      routingMode: 'normal',
+      routingCascade: [],
     });
     assert.equal(loadEnv({ KR_DB_PATH: '/tmp/absolute.db' }).dbPath, resolve('/tmp/absolute.db'));
+  });
+
+  it('defaults the routing mode to normal, so an installation is unchanged until it opts in', () => {
+    const env = loadEnv({});
+
+    assert.equal(env.routingMode, 'normal');
+    assert.deepEqual(env.routingCascade, []);
+  });
+
+  it('reads the routing mode and the cascade, trimming entries and dropping empties', () => {
+    const env = loadEnv({
+      KR_ROUTING_MODE: 'auto_model',
+      KR_ROUTING_CASCADE: 'gpt-6-luna, meta/llama-3 ,, ',
+    });
+
+    assert.equal(env.routingMode, 'auto_model');
+    // A provider model id carries slashes of its own, so an entry is kept whole and never split.
+    assert.deepEqual(env.routingCascade, ['gpt-6-luna', 'meta/llama-3']);
+  });
+
+  it('rejects an unknown routing mode by name', () => {
+    assert.throws(() => loadEnv({ KR_ROUTING_MODE: 'auto_everything' }), /KR_ROUTING_MODE/);
   });
 
   it('ignores unrelated variables', () => {

@@ -31,6 +31,7 @@ const ERROR_COPY = {
   model_not_found: 'Ese modelo no esta disponible para el gateway.',
   chat_not_supported: 'El proveedor de ese modelo no soporta el protocolo de chat.',
   invalid_chat_request: 'La peticion de chat no cumple el contrato del gateway.',
+  all_attempts_failed: 'Todos los candidatos fallaron y no queda ninguno por intentar.',
   invalid_body: 'La peticion no cumple el contrato del gateway.',
   provider_failure: 'El proveedor no respondio correctamente.',
   route_not_found: 'El gateway no reconoce esa ruta.',

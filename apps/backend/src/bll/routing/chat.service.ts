@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { APP_ENV, type AppEnv } from '../../config/env.js';
 import type {
   ChatChunk,
   ChatRequest,
@@ -7,9 +8,11 @@ import type {
   TranslatedRequest,
 } from '../../types/chat.js';
 import type { ProviderChatCall } from '../../types/chat-transport.js';
+import { ProviderFailure } from '../../types/provider.js';
+import type { RoutingAttempt } from '../../types/routing.js';
 import { countFrameDrops } from '../translation/frame-report.js';
-import { ClientDisconnectedError } from './errors.js';
-import { RequestRouter, type ResolvedRoute, type RouteInput } from './request-router.js';
+import { AllAttemptsFailedError, ClientDisconnectedError } from './errors.js';
+import { RequestRouter, type ResolvedRoute, type RouteInput, type RoutePlan } from './request-router.js';
 import { mapTranslationFailure } from './translation.js';
 
 export interface ChatCallInput extends RouteInput {
@@ -45,30 +48,66 @@ export interface ChatStream {
 export class ChatService {
   private readonly logger = new Logger('ChatService');
 
-  constructor(@Inject(RequestRouter) private readonly router: RequestRouter) {}
+  constructor(
+    @Inject(RequestRouter) private readonly router: RequestRouter,
+    @Inject(APP_ENV) private readonly env: AppEnv,
+  ) {}
 
   async complete(input: ChatCallInput): Promise<ChatCompletion> {
-    const route = this.router.resolve({ ...input, stream: false });
-    const translated = this.translatedRequest(route, input.request);
-    const payload = await this.carry(route, providerCall(route, translated.body, false, input.signal));
+    const plan = this.plan(input, false);
+    const failures: RoutingAttempt[] = [];
 
-    return {
-      route,
-      response: this.translatedResponse(route, payload),
-      warnings: translated.warnings,
-    };
+    for (const attempt of plan.attempts) {
+      const route = this.router.resolveAttempt(plan.requestId, attempt, { ...input, stream: false });
+      const translated = this.translatedRequest(route, input.request);
+
+      try {
+        const payload = await this.carry(route, providerCall(route, translated.body, false, input.signal));
+
+        return { route, response: this.translatedResponse(route, payload), warnings: translated.warnings };
+      } catch (error) {
+        // Only a provider failure earns the next candidate: a body the client sent badly would fail the
+        // same way everywhere, and a client that walked away has nobody left to answer.
+        if (!isRetryable(error)) {
+          throw error;
+        }
+
+        failures.push(attempt);
+      }
+    }
+
+    throw new AllAttemptsFailedError(failures.length > 0 ? failures : plan.skipped.map((skipped) => skipped.attempt));
   }
 
   stream(input: ChatCallInput): ChatStream {
-    const route = this.router.resolve({ ...input, stream: true });
+    const plan = this.plan(input, true);
+    const first = plan.attempts[0];
+
+    if (first === undefined) {
+      throw new AllAttemptsFailedError(plan.skipped.map((skipped) => skipped.attempt));
+    }
+
+    // The envelope is built from the first attempt. The requestId it carries is the plan's, shared by
+    // every attempt, so the id a client sees stays stable even when a later attempt serves the request.
+    const route = this.router.resolveAttempt(plan.requestId, first, { ...input, stream: true });
     const translated = this.translatedRequest(route, input.request);
-    const frames = route.adapter.chatStream(route.target, providerCall(route, translated.body, true, input.signal));
 
     return {
       route,
       warnings: translated.warnings,
-      chunks: this.translatedChunks(route, frames, input.signal),
+      chunks: this.streamAttempts(plan, input, route),
     };
+  }
+
+  /** The plan of one call: the mode and the cascade are the installation's, not the client's. */
+  private plan(input: ChatCallInput, stream: boolean): RoutePlan {
+    return this.router.plan({
+      model: input.model,
+      clientFormat: input.clientFormat,
+      stream,
+      mode: this.env.routingMode,
+      cascade: this.env.routingCascade,
+    });
   }
 
   /** One non streaming call, abandoned as soon as the client is gone. */
@@ -77,48 +116,70 @@ export class ChatService {
   }
 
   /**
-   * Each provider frame, translated to the client's format and yielded at once. A frame that carries
-   * nothing for the client yields nothing; a frame the translator refuses fails loudly, so a broken
-   * stream is reported instead of being trimmed in silence.
+   * The frames of one request, across the attempts it may take. Each provider frame is translated to
+   * the client's format and yielded at once; a frame that carries nothing yields nothing, and a frame
+   * the translator refuses fails loudly, so a broken stream is reported instead of trimmed in silence.
    *
-   * A frame the translator had to drop is counted and reported once, when the request is over: the
-   * response has already started, so the log is the only place left to say it. Spec 014.
+   * The loop only advances to the next candidate before the first frame of the current one arrives:
+   * once a provider has started streaming, a failure propagates, because a client may already hold
+   * bytes of that attempt and a second one would contradict them. A frame the translator had to drop is
+   * counted and reported once per attempt, when the request is over: the response has already started,
+   * so the log is the only place left to say it. Spec 014.
    */
-  private async *translatedChunks(
-    route: ResolvedRoute,
-    frames: AsyncIterable<unknown>,
-    signal?: AbortSignal,
+  private async *streamAttempts(
+    plan: RoutePlan,
+    input: ChatCallInput,
+    firstRoute: ResolvedRoute,
   ): AsyncGenerator<ChatChunk> {
-    const drops = countFrameDrops();
-    const iterator = frames[Symbol.asyncIterator]();
+    const failures: RoutingAttempt[] = [];
 
-    try {
-      for (;;) {
-        if (signal?.aborted === true) {
-          throw new ClientDisconnectedError();
+    for (const [index, attempt] of plan.attempts.entries()) {
+      const route =
+        index === 0 ? firstRoute : this.router.resolveAttempt(plan.requestId, attempt, { ...input, stream: true });
+      const translated = this.translatedRequest(route, input.request);
+      const frames = route.adapter.chatStream(route.target, providerCall(route, translated.body, true, input.signal));
+      const iterator = frames[Symbol.asyncIterator]();
+      const drops = countFrameDrops();
+      let committed = false;
+
+      try {
+        for (;;) {
+          if (input.signal?.aborted === true) {
+            throw new ClientDisconnectedError();
+          }
+
+          const frame = await withAbort(iterator.next(), input.signal);
+
+          if (frame.done === true) {
+            return;
+          }
+
+          committed = true;
+
+          for (const chunk of this.translatedChunk(route, frame.value, drops.report)) {
+            yield chunk;
+          }
+        }
+      } catch (error) {
+        if (committed || !isRetryable(error)) {
+          throw error;
         }
 
-        const frame = await withAbort(iterator.next(), signal);
+        failures.push(attempt);
+      } finally {
+        // Closing the iterator is what stops the provider stream: a consumer that walked away must not
+        // leave a request paying for frames nobody will read.
+        await iterator.return?.(undefined);
 
-        if (frame.done === true) {
-          return;
+        const dropped = drops.line(route.requestId);
+
+        if (dropped !== null) {
+          this.logger.warn(dropped);
         }
-
-        for (const chunk of this.translatedChunk(route, frame.value, drops.report)) {
-          yield chunk;
-        }
-      }
-    } finally {
-      // Closing the iterator is what stops the provider stream: a consumer that walked away must not
-      // leave a request paying for frames nobody will read.
-      await iterator.return?.(undefined);
-
-      const dropped = drops.line(route.requestId);
-
-      if (dropped !== null) {
-        this.logger.warn(dropped);
       }
     }
+
+    throw new AllAttemptsFailedError(failures);
   }
 
   private translatedRequest(route: ResolvedRoute, request: ChatRequest): TranslatedRequest {
@@ -193,4 +254,14 @@ async function withAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> 
       signal.removeEventListener('abort', listener);
     }
   }
+}
+
+/**
+ * Whether a failure earns another candidate. Only a provider failure does: the request body is the
+ * client's, so one it sent badly would fail the same way everywhere, and a client that walked away has
+ * nobody left to answer. A translated frame that arrived malformed is a provider failure too, and it is
+ * retried only before the first frame, because past it the request is already committed.
+ */
+function isRetryable(error: unknown): boolean {
+  return error instanceof ProviderFailure;
 }

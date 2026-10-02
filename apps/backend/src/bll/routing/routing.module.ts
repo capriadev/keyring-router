@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '../../config/config.module.js';
 import { DalModule } from '../../dal/dal.module.js';
 import { BllModule } from '../bll.module.js';
 import { createTranslationRegistry } from '../translation/index.js';
@@ -15,7 +16,7 @@ import { CHAT_TRANSLATORS } from './translation.js';
  * registry per application, because two would answer differently for the same pair.
  */
 @Module({
-  imports: [DalModule, BllModule],
+  imports: [ConfigModule, DalModule, BllModule],
   providers: [
     { provide: CHAT_TRANSLATORS, useFactory: () => createTranslationRegistry() },
     RequestRouter,

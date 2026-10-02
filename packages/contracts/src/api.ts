@@ -163,6 +163,7 @@ export type ApiErrorCode =
   | 'model_not_found'
   | 'chat_not_supported'
   | 'invalid_chat_request'
+  | 'all_attempts_failed'
   | 'invalid_body'
   | 'provider_failure'
   | 'route_not_found'
