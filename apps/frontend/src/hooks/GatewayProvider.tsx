@@ -91,6 +91,7 @@ export function GatewayProvider({ children }: GatewayProviderProps) {
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   const refreshHealth = useCallback((): void => {
     void readResource(fetchHealth, setHealth, 'clear');
@@ -236,6 +237,8 @@ export function GatewayProvider({ children }: GatewayProviderProps) {
       health.loading || providers.loading || credentials.loading || catalog.loading || models.loading,
     notice,
     actionError,
+    selectedProviderId,
+    selectProvider: setSelectedProviderId,
     refreshAll,
     refreshHealth,
     refreshProviders,

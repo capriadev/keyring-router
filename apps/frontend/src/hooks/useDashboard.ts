@@ -49,6 +49,12 @@ export interface DashboardStore {
   readonly notice: string | null;
   /** Last action that failed, already translated to Spanish by the service layer. */
   readonly actionError: string | null;
+  /**
+   * Provider chosen on the Proveedores screen, waiting for the credential form to consume it once. It is
+   * navigation state, not a reading: the form clears it the moment it has used it.
+   */
+  readonly selectedProviderId: string | null;
+  readonly selectProvider: (providerId: string | null) => void;
   readonly refreshAll: () => void;
   readonly refreshHealth: () => void;
   readonly refreshProviders: () => void;

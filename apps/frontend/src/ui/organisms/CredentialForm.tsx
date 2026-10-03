@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { describeSecretProblem } from '../../config/secrets';
 import { useDashboard } from '../../hooks/useDashboard';
 import {
@@ -8,11 +8,11 @@ import {
   SECRET_MAX_LENGTH,
   type AuthKind,
   type CredentialInput,
-  type ProviderDescriptor,
 } from '../../types/api';
 import { ActionButton } from '../atoms/ActionButton';
 import { SelectField, type SelectOption } from '../atoms/SelectField';
 import { TextField } from '../atoms/TextField';
+import { ProviderBrowser } from '../molecules/ProviderBrowser';
 import { ScreenSection } from '../molecules/ScreenSection';
 import { StateNote } from '../molecules/StateNote';
 import styles from './CredentialForm.module.css';
@@ -22,13 +22,6 @@ const AUTH_KIND_LABELS: Record<AuthKind, string> = {
   none: 'Sin autenticacion: el proveedor no pide clave.',
   api_key: 'Con clave: el gateway la guarda cifrada.',
 };
-
-function providerOptions(providers: readonly ProviderDescriptor[]): readonly SelectOption[] {
-  return providers.map((provider) => ({
-    value: provider.providerId,
-    label: `${provider.displayName} (${provider.providerId})`,
-  }));
-}
 
 function authKindOptions(kinds: readonly AuthKind[]): readonly SelectOption[] {
   return kinds.map((kind) => ({ value: kind, label: AUTH_KIND_LABELS[kind] }));
@@ -66,7 +59,7 @@ function validate(
  * que reporta el gateway: este formulario no lleva ninguna lista propia.
  */
 export function CredentialForm() {
-  const { providers, create, pending, refreshProviders } = useDashboard();
+  const { providers, create, pending, refreshProviders, selectedProviderId, selectProvider } = useDashboard();
   const [namespace, setNamespace] = useState('');
   const [providerId, setProviderId] = useState('');
   const [authKind, setAuthKind] = useState<AuthKind | null>(null);
@@ -75,12 +68,28 @@ export function CredentialForm() {
   const [problem, setProblem] = useState<string | null>(null);
 
   const available = providers.data ?? [];
-  const selected =
-    available.find((provider) => provider.providerId === providerId) ?? available[0] ?? null;
+  const selected = available.find((provider) => provider.providerId === providerId) ?? null;
   const kinds = selected?.authKinds ?? [];
   const effectiveKind = authKind !== null && kinds.includes(authKind) ? authKind : (kinds[0] ?? null);
   const needsSecret = effectiveKind === 'api_key';
   const busy = pending !== null;
+
+  /**
+   * The Proveedores screen carries a provider here. It is consumed once, as soon as the catalog is
+   * available, so picking it also pre-fills the declared base URL and a later visit starts clean. The ref
+   * makes it a one-shot even though the effect has no dependency list.
+   */
+  const preselectionConsumed = useRef(false);
+
+  useEffect(() => {
+    if (preselectionConsumed.current || selectedProviderId === null || available.length === 0) {
+      return;
+    }
+
+    preselectionConsumed.current = true;
+    chooseProvider(selectedProviderId);
+    selectProvider(null);
+  });
 
   /** Picking a provider pre-fills its declared endpoint and re-reads what it accepts. */
   function chooseProvider(id: string): void {
@@ -153,6 +162,15 @@ export function CredentialForm() {
       description="Una credencial es una cuenta concreta de un proveedor, con su namespace propio: dos cuentas del mismo proveedor no se mezclan."
     >
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        <ProviderBrowser
+          providers={available}
+          selectedId={selected?.providerId}
+          onSelect={(provider) => chooseProvider(provider.providerId)}
+          busy={busy}
+          searchLabel="Proveedor"
+          compact
+        />
+
         <div className={styles.grid}>
           <TextField
             id="credential-namespace"
@@ -163,18 +181,6 @@ export function CredentialForm() {
             disabled={busy}
             required
           />
-
-          {selected !== null && (
-            <SelectField
-              id="credential-provider"
-              label="Proveedor"
-              value={selected.providerId}
-              options={providerOptions(available)}
-              onChange={chooseProvider}
-              hint="El catalogo de proveedores lo reporta el gateway."
-              disabled={busy}
-            />
-          )}
 
           {kinds.length > 1 && (
             <SelectField

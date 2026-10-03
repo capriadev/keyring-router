@@ -16,11 +16,12 @@ interface SectionLink {
   readonly label: string;
 }
 
-/** The five screens. Navigation is real routes: nothing is stacked behind a toggle. */
+/** The six screens. Navigation is real routes: nothing is stacked behind a toggle. */
 const SECTIONS: readonly SectionLink[] = [
   { href: '/', label: 'Estado' },
+  { href: '/proveedores', label: 'Proveedores' },
   { href: '/credenciales', label: 'Credenciales' },
-  { href: '/catalogo', label: 'Catalogo y exposicion' },
+  { href: '/catalogo', label: 'Catalogo' },
   { href: '/modelos', label: 'Modelos expuestos' },
   { href: '/ajustes', label: 'Ajustes' },
 ];

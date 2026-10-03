@@ -1,0 +1,105 @@
+.browser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--layout-column-min)) minmax(0, var(--layout-column-min));
+  gap: var(--space-md);
+  align-items: end;
+}
+
+@media (max-width: 48rem) {
+  .controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.count {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: var(--font-variant-numeric);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--layout-column-min), 1fr));
+  gap: var(--space-sm);
+}
+
+/* Inside a form the list scrolls instead of pushing the submit control off the screen. */
+.listCompact {
+  grid-template-columns: minmax(0, 1fr);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.row {
+  width: 100%;
+  display: grid;
+  gap: var(--space-xs);
+  text-align: left;
+  border: var(--border-width-thin) solid var(--color-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-content);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-quick),
+    background var(--duration-quick);
+}
+
+.row:hover:enabled {
+  border-color: var(--color-border-control-hover);
+}
+
+.row:active:enabled {
+  border-color: var(--color-accent-pressed);
+}
+
+.rowSelected {
+  border-color: var(--color-accent);
+}
+
+.row:disabled {
+  color: var(--color-muted);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+}
+
+.name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.ids {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.models {
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: var(--font-variant-numeric);
+}
+
+.url {
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+}
